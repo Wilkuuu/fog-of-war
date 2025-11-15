@@ -1,19 +1,59 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Fog of War
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Fog of War</ion-title>
+<ion-menu side="start" menuId="main-menu" [contentId]="contentId">
+  <ion-header>
+    <ion-toolbar color="primary">
+      <ion-title>Menu</ion-title>
     </ion-toolbar>
   </ion-header>
+  <ion-content>
+    <ion-list>
+      <ion-item button (click)="selectVideo()">
+        <ion-icon name="videocam-outline" slot="start"></ion-icon>
+        <ion-label>
+          <h2>Select Video</h2>
+          <p>Choose a video from your device</p>
+        </ion-label>
+      </ion-item>
 
-  <div class="container">
+      <ion-item>
+        <ion-label>
+          <h2>Brush Size</h2>
+          <p>Adjust the size of the fog removal tool</p>
+        </ion-label>
+      </ion-item>
+      
+      <ion-item>
+        <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)" style="width: 100%;">
+          <ion-segment-button value="30">
+            <ion-label>Small</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="50">
+            <ion-label>Medium</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="80">
+            <ion-label>Large</ion-label>
+          </ion-segment-button>
+        </ion-segment>
+      </ion-item>
+
+      <ion-item>
+        <ion-button expand="block" fill="outline" (click)="resetFog(); closeMenu()">
+          <ion-icon name="refresh" slot="start"></ion-icon>
+          Reset Fog
+        </ion-button>
+      </ion-item>
+
+      <ion-item *ngIf="videoUrl">
+        <ion-button expand="block" fill="outline" (click)="selectVideo(); closeMenu()">
+          <ion-icon name="swap-horizontal" slot="start"></ion-icon>
+          Change Video
+        </ion-button>
+      </ion-item>
+    </ion-list>
+  </ion-content>
+</ion-menu>
+
+<div class="ion-page" [id]="contentId" style="height: 100vh; display: flex; flex-direction: column;">
+  <ion-content [fullscreen]="true" class="video-content" style="flex: 1; min-height: 0;">
     <div *ngIf="!videoUrl" class="empty-state">
       <ion-button expand="block" (click)="selectVideo()">
         <ion-icon name="videocam-outline" slot="start"></ion-icon>
@@ -43,30 +83,13 @@
         (mouseleave)="onCanvasMouseUp()">
       </canvas>
     </div>
-
-    <div *ngIf="videoUrl" class="controls">
-      <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)">
-        <ion-segment-button value="30">
-          <ion-label>Small</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="50">
-          <ion-label>Medium</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="80">
-          <ion-label>Large</ion-label>
-        </ion-segment-button>
-      </ion-segment>
-
-      <ion-button expand="block" fill="outline" (click)="resetFog()">
-        <ion-icon name="refresh" slot="start"></ion-icon>
-        Reset Fog
-      </ion-button>
-
-      <ion-button expand="block" fill="outline" (click)="selectVideo()">
-        <ion-icon name="swap-horizontal" slot="start"></ion-icon>
-        Change Video
-      </ion-button>
-    </div>
-  </div>
-</ion-content>
+    
+    <!-- Floating hamburger menu button - always visible -->
+    <button class="menu-button" (click)="openMenu()" type="button">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </ion-content>
+</div>
 

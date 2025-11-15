@@ -1,5 +1,5 @@
 import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
-import { ActionSheetController } from '@ionic/angular';
+import { ActionSheetController, MenuController } from '@ionic/angular';
 
 @Component({
   selector: 'app-home',
@@ -15,6 +15,7 @@ export class HomePage implements AfterViewInit {
   brushSizeStr: string = '50';
   isDrawing: boolean = false;
   fogMask: ImageData | null = null;
+  contentId: string = 'main-content';
   
   private ctx: CanvasRenderingContext2D | null = null;
   private video: HTMLVideoElement | null = null;
@@ -23,7 +24,18 @@ export class HomePage implements AfterViewInit {
   private fogCtx: CanvasRenderingContext2D | null = null;
   private fogMaskDirty: boolean = false;
 
-  constructor(private actionSheetController: ActionSheetController) {}
+  constructor(
+    private actionSheetController: ActionSheetController,
+    private menuController: MenuController
+  ) {}
+  
+  closeMenu() {
+    this.menuController.close('main-menu');
+  }
+  
+  async openMenu() {
+    await this.menuController.open('main-menu');
+  }
 
   ngAfterViewInit() {
     // Wait a bit for view to initialize
@@ -42,22 +54,11 @@ export class HomePage implements AfterViewInit {
   }
 
   async selectVideo() {
-    const actionSheet = await this.actionSheetController.create({
-      header: 'Select Video Source',
-      buttons: [
-        {
-          text: 'Choose from Gallery',
-          handler: () => {
-            this.pickVideoFromGallery();
-          }
-        },
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        }
-      ]
-    });
-    await actionSheet.present();
+    // Close menu if open
+    await this.menuController.close('main-menu');
+    
+    // Directly open file picker
+    this.pickVideoFromGallery();
   }
 
   pickVideoFromGallery() {
@@ -66,6 +67,9 @@ export class HomePage implements AfterViewInit {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'video/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    
     input.onchange = (event: any) => {
       const file = event.target.files[0];
       if (file) {
@@ -76,6 +80,10 @@ export class HomePage implements AfterViewInit {
         }
         this.videoUrl = URL.createObjectURL(file);
         console.log('🔗 Video URL created:', this.videoUrl);
+        
+        // Remove input element
+        document.body.removeChild(input);
+        
         // Wait for view to update, then set video source
         setTimeout(() => {
           console.log('⏱️ Setting video source after timeout');
@@ -114,8 +122,16 @@ export class HomePage implements AfterViewInit {
         }, 100);
       } else {
         console.log('⚠️ No file selected');
+        document.body.removeChild(input);
       }
     };
+    
+    input.oncancel = () => {
+      console.log('⚠️ File picker cancelled');
+      document.body.removeChild(input);
+    };
+    
+    // Trigger file picker
     input.click();
   }
 
@@ -166,58 +182,83 @@ export class HomePage implements AfterViewInit {
         return;
       }
       
-      const containerWidth = container.clientWidth || 800;
-      const containerHeight = container.clientHeight || 600;
+      // Get actual container dimensions - use multiple methods to ensure we get correct size
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width || container.clientWidth || window.innerWidth;
+      const containerHeight = containerRect.height || container.clientHeight || window.innerHeight;
       
-      if (containerWidth === 0 || containerHeight === 0) {
-        console.log('Container has zero dimensions, retrying...');
+      console.log('📐 Container dimensions:', {
+        clientWidth: container.clientWidth,
+        clientHeight: container.clientHeight,
+        rectWidth: containerRect.width,
+        rectHeight: containerRect.height,
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight
+      });
+      
+      if (containerWidth === 0 || containerHeight === 0 || !isFinite(containerWidth) || !isFinite(containerHeight)) {
+        console.log('Container has invalid dimensions, retrying...');
         setTimeout(() => this.setupCanvas(), 200);
         return;
       }
       
-      // Calculate aspect ratio
-      const videoAspect = this.video.videoWidth / this.video.videoHeight;
+      // Get video dimensions and aspect ratio
+      const videoWidth = this.video.videoWidth;
+      const videoHeight = this.video.videoHeight;
+      const videoAspect = videoWidth / videoHeight;
       const containerAspect = containerWidth / containerHeight;
       
-      let canvasWidth, canvasHeight;
+      // Determine which side of the video is longer
+      const videoIsWider = videoWidth > videoHeight;
       
-      // Fit video to container while maintaining aspect ratio
-      if (videoAspect > containerAspect) {
-        // Video is wider - fit to width
-        canvasWidth = containerWidth;
-        canvasHeight = containerWidth / videoAspect;
+      // Calculate display size: fit the longer side to container and scale proportionally
+      let displayWidth, displayHeight;
+      
+      if (videoIsWider) {
+        // Video is wider (landscape) - fit width to container, scale height
+        displayWidth = Math.min(containerWidth, containerHeight * videoAspect);
+        displayHeight = displayWidth / videoAspect;
       } else {
-        // Video is taller - fit to height
-        canvasHeight = containerHeight;
-        canvasWidth = containerHeight * videoAspect;
+        // Video is taller (portrait) or square - fit height to container, scale width
+        displayHeight = Math.min(containerHeight, containerWidth / videoAspect);
+        displayWidth = displayHeight * videoAspect;
       }
       
-      // Set canvas display size to fill container
-      this.canvas.style.width = '100%';
-      this.canvas.style.height = '100%';
+      // Ensure we don't exceed container bounds
+      if (displayWidth > containerWidth) {
+        displayWidth = containerWidth;
+        displayHeight = containerWidth / videoAspect;
+      }
+      if (displayHeight > containerHeight) {
+        displayHeight = containerHeight;
+        displayWidth = containerHeight * videoAspect;
+      }
+      
+      console.log('📐 Calculated sizes:', {
+        displayWidth,
+        displayHeight,
+        videoAspect: videoAspect.toFixed(2),
+        containerAspect: containerAspect.toFixed(2),
+        videoSize: `${this.video.videoWidth}x${this.video.videoHeight}`
+      });
+      
+      // Set canvas display size using explicit pixel values
+      this.canvas.style.width = displayWidth + 'px';
+      this.canvas.style.height = displayHeight + 'px';
+      this.canvas.style.maxWidth = '100%';
+      this.canvas.style.maxHeight = '100%';
       this.canvas.style.objectFit = 'contain';
+      this.canvas.style.display = 'block';
       
-      // Set canvas internal resolution to match display size for proper scaling
-      // Use device pixel ratio for crisp rendering on high-DPI displays
+      // Set canvas internal resolution (use DPR for sharpness)
       const dpr = window.devicePixelRatio || 1;
-      const displayWidth = containerWidth;
-      const displayHeight = containerHeight;
+      this.canvas.width = displayWidth * dpr;
+      this.canvas.height = displayHeight * dpr;
       
-      // Calculate the actual display size maintaining aspect ratio
-      let actualDisplayWidth, actualDisplayHeight;
-      if (videoAspect > containerAspect) {
-        actualDisplayWidth = displayWidth;
-        actualDisplayHeight = displayWidth / videoAspect;
-      } else {
-        actualDisplayHeight = displayHeight;
-        actualDisplayWidth = displayHeight * videoAspect;
-      }
-      
-      // Set internal resolution (scaled by DPR for sharpness)
-      this.canvas.width = actualDisplayWidth * dpr;
-      this.canvas.height = actualDisplayHeight * dpr;
-      
-      // Scale the context to match DPR
+      // Reset transform and scale the context to match DPR
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
       this.ctx.scale(dpr, dpr);
       
       // Update fog canvas size to match
@@ -225,14 +266,15 @@ export class HomePage implements AfterViewInit {
         this.fogCanvas.width = this.canvas.width;
         this.fogCanvas.height = this.canvas.height;
         if (this.fogCtx) {
+          this.fogCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
           this.fogCtx.scale(dpr, dpr);
         }
       }
       
-      // Create a separate canvas for the fog mask at canvas resolution
+      // Create a separate canvas for the fog mask at display resolution
       const maskCanvas = document.createElement('canvas');
-      maskCanvas.width = actualDisplayWidth;
-      maskCanvas.height = actualDisplayHeight;
+      maskCanvas.width = displayWidth;
+      maskCanvas.height = displayHeight;
       const maskCtx = maskCanvas.getContext('2d');
       
       if (!maskCtx) {
@@ -240,8 +282,8 @@ export class HomePage implements AfterViewInit {
         return;
       }
       
-      // Initialize fog mask (dark overlay) - using 0.8 opacity
-      maskCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      // Initialize fog mask (fully opaque black - completely hides video)
+      maskCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
       maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
       
       // Verify mask was created correctly
@@ -251,7 +293,7 @@ export class HomePage implements AfterViewInit {
         g: testMaskPixel.data[1],
         b: testMaskPixel.data[2],
         a: testMaskPixel.data[3],
-        expected: 'rgba(0, 0, 0, 204)' // 0.8 * 255 = 204
+        expected: 'rgba(0, 0, 0, 255)' // Fully opaque
       });
       
       // Store the initial mask
@@ -273,7 +315,7 @@ export class HomePage implements AfterViewInit {
       const computedStyle = window.getComputedStyle(this.canvas);
       console.log('✅ Canvas setup complete:', {
         canvasSize: `${this.canvas.width}x${this.canvas.height}`,
-        displaySize: `${canvasWidth}x${canvasHeight}`,
+        displaySize: `${displayWidth}x${displayHeight}`,
         videoSize: `${this.video.videoWidth}x${this.video.videoHeight}`,
         canvasStyle: {
           width: this.canvas.style.width,
@@ -367,23 +409,9 @@ export class HomePage implements AfterViewInit {
           });
         }
         
-        // Draw video - scale to fill canvas (accounting for DPR scaling already applied)
-        // Get actual display dimensions
-        const displayWidth = this.canvas.offsetWidth || this.canvas.width / (window.devicePixelRatio || 1);
-        const displayHeight = this.canvas.offsetHeight || this.canvas.height / (window.devicePixelRatio || 1);
-        
-        // Calculate proper display size maintaining aspect ratio
-        const videoAspect = this.video.videoWidth / this.video.videoHeight;
-        const displayAspect = displayWidth / displayHeight;
-        let drawWidth, drawHeight;
-        
-        if (videoAspect > displayAspect) {
-          drawWidth = displayWidth;
-          drawHeight = displayWidth / videoAspect;
-        } else {
-          drawHeight = displayHeight;
-          drawWidth = displayHeight * videoAspect;
-        }
+        // Draw video - scale to canvas display size (context is already scaled by DPR)
+        const drawWidth = this.canvas.width / (window.devicePixelRatio || 1);
+        const drawHeight = this.canvas.height / (window.devicePixelRatio || 1);
         
         this.ctx.drawImage(this.video, 0, 0, drawWidth, drawHeight);
         
@@ -569,7 +597,7 @@ export class HomePage implements AfterViewInit {
     
     if (!maskCtx) return;
     
-    maskCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    maskCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
     maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
     this.fogMask = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     this.fogMaskDirty = true; // Mark as dirty
