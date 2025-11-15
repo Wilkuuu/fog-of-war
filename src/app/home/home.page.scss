@@ -5,9 +5,11 @@
   --padding-bottom: 0;
   height: 100vh !important;
   min-height: 100vh !important;
+  max-height: 100vh !important;
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden !important;
 }
 
 .empty-state {
@@ -24,6 +26,7 @@
   width: 100%;
   flex: 1;
   min-height: 0;
+  max-height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;

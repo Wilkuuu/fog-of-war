@@ -17,6 +17,9 @@ export class HomePage implements AfterViewInit {
   fogMask: ImageData | null = null;
   contentId: string = 'main-content';
   
+  // Configuration: Video scale percentage (0.8 = 80% of container height)
+  videoScale: number = 0.8;
+  
   private ctx: CanvasRenderingContext2D | null = null;
   private video: HTMLVideoElement | null = null;
   private canvas: HTMLCanvasElement | null = null;
@@ -204,36 +207,40 @@ export class HomePage implements AfterViewInit {
         return;
       }
       
+      // Apply scale factor to container height (e.g., 80% = 0.8)
+      const scaledContainerHeight = containerHeight * this.videoScale;
+      const scaledContainerWidth = containerWidth;
+      
       // Get video dimensions and aspect ratio
       const videoWidth = this.video.videoWidth;
       const videoHeight = this.video.videoHeight;
       const videoAspect = videoWidth / videoHeight;
-      const containerAspect = containerWidth / containerHeight;
+      const containerAspect = scaledContainerWidth / scaledContainerHeight;
       
       // Determine which side of the video is longer
       const videoIsWider = videoWidth > videoHeight;
       
-      // Calculate display size: fit the longer side to container and scale proportionally
+      // Calculate display size: fit the longer side to scaled container and scale proportionally
       let displayWidth, displayHeight;
       
       if (videoIsWider) {
         // Video is wider (landscape) - fit width to container, scale height
-        displayWidth = Math.min(containerWidth, containerHeight * videoAspect);
+        displayWidth = Math.min(scaledContainerWidth, scaledContainerHeight * videoAspect);
         displayHeight = displayWidth / videoAspect;
       } else {
-        // Video is taller (portrait) or square - fit height to container, scale width
-        displayHeight = Math.min(containerHeight, containerWidth / videoAspect);
+        // Video is taller (portrait) or square - fit height to scaled container, scale width
+        displayHeight = Math.min(scaledContainerHeight, scaledContainerWidth / videoAspect);
         displayWidth = displayHeight * videoAspect;
       }
       
-      // Ensure we don't exceed container bounds
-      if (displayWidth > containerWidth) {
-        displayWidth = containerWidth;
-        displayHeight = containerWidth / videoAspect;
+      // Ensure we don't exceed scaled container bounds
+      if (displayWidth > scaledContainerWidth) {
+        displayWidth = scaledContainerWidth;
+        displayHeight = scaledContainerWidth / videoAspect;
       }
-      if (displayHeight > containerHeight) {
-        displayHeight = containerHeight;
-        displayWidth = containerHeight * videoAspect;
+      if (displayHeight > scaledContainerHeight) {
+        displayHeight = scaledContainerHeight;
+        displayWidth = scaledContainerHeight * videoAspect;
       }
       
       console.log('📐 Calculated sizes:', {
