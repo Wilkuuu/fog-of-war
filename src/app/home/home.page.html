@@ -1,0 +1,72 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      Fog of War
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Fog of War</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="container">
+    <div *ngIf="!videoUrl" class="empty-state">
+      <ion-button expand="block" (click)="selectVideo()">
+        <ion-icon name="videocam-outline" slot="start"></ion-icon>
+        Select Video
+      </ion-button>
+    </div>
+
+    <div *ngIf="videoUrl" class="video-container">
+      <video 
+        #videoElement 
+        [src]="videoUrl" 
+        autoplay 
+        muted 
+        loop
+        playsinline
+        style="display: none;">
+      </video>
+      
+      <canvas 
+        #canvasElement 
+        class="fog-canvas"
+        (touchstart)="onCanvasTouch($event)"
+        (touchmove)="onCanvasTouch($event)"
+        (mousedown)="onCanvasMouseDown($event)"
+        (mousemove)="onCanvasMouseMove($event)"
+        (mouseup)="onCanvasMouseUp()"
+        (mouseleave)="onCanvasMouseUp()">
+      </canvas>
+    </div>
+
+    <div *ngIf="videoUrl" class="controls">
+      <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)">
+        <ion-segment-button value="30">
+          <ion-label>Small</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="50">
+          <ion-label>Medium</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="80">
+          <ion-label>Large</ion-label>
+        </ion-segment-button>
+      </ion-segment>
+
+      <ion-button expand="block" fill="outline" (click)="resetFog()">
+        <ion-icon name="refresh" slot="start"></ion-icon>
+        Reset Fog
+      </ion-button>
+
+      <ion-button expand="block" fill="outline" (click)="selectVideo()">
+        <ion-icon name="swap-horizontal" slot="start"></ion-icon>
+        Change Video
+      </ion-button>
+    </div>
+  </div>
+</ion-content>
+
