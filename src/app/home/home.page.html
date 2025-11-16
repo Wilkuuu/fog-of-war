@@ -70,9 +70,6 @@
   <ion-content [fullscreen]="true" class="video-content" style="flex: 1; min-height: 0;">
     <div *ngIf="!videoUrl" class="empty-state">
       <div class="empty-state-content">
-        <div class="empty-state-icon">
-          <ion-icon name="videocam-outline"></ion-icon>
-        </div>
         <h1 class="empty-state-title">Fog of War</h1>
         <p class="empty-state-description">Select a video to begin revealing hidden content</p>
         <ion-button class="select-video-button" expand="block" (click)="selectVideo()">
