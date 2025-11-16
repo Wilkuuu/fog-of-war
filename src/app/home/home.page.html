@@ -1,68 +1,58 @@
-<ion-menu side="start" menuId="main-menu" [contentId]="contentId">
-  <ion-header>
-    <ion-toolbar color="primary">
-      <ion-title>Menu</ion-title>
-    </ion-toolbar>
-  </ion-header>
-  <ion-content>
-    <ion-list>
-      <ion-item button (click)="selectVideo()">
-        <ion-icon name="videocam-outline" slot="start"></ion-icon>
-        <ion-label>
-          <h2>Select Video</h2>
-          <p>Choose a video from your device</p>
-        </ion-label>
-      </ion-item>
+<ion-menu side="start" menuId="main-menu" [contentId]="contentId" class="custom-menu">
+  <ion-content class="menu-content">
+    <div class="menu-header">
+      <h2 class="menu-title">Fog of War</h2>
+      <p class="menu-subtitle">Controls</p>
+    </div>
 
-      <ion-item>
-        <ion-label>
-          <h2>Brush Size</h2>
-          <p>Adjust the size of the fog removal tool</p>
-        </ion-label>
-      </ion-item>
-      
-      <ion-item>
-        <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)" style="width: 100%;">
-          <ion-segment-button value="18">
-            <ion-label>Small</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="50">
-            <ion-label>Medium</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="80">
-            <ion-label>Large</ion-label>
-          </ion-segment-button>
-        </ion-segment>
-      </ion-item>
-
-      <ion-item *ngIf="videoUrl">
-        <ion-button expand="block" fill="outline" color="success" (click)="removeAllFog(); closeMenu()">
-          <ion-icon name="eye-outline" slot="start"></ion-icon>
-          Remove All Fog
+    <div class="menu-sections">
+      <!-- Video Section -->
+      <div class="menu-section">
+        <h3 class="section-title">Video</h3>
+        <ion-button class="menu-action-button" expand="block" fill="solid" (click)="selectVideo(); closeMenu()">
+          <ion-icon name="videocam-outline" slot="start"></ion-icon>
+          <span *ngIf="!videoUrl">Select Video</span>
+          <span *ngIf="videoUrl">Change Video</span>
         </ion-button>
-      </ion-item>
+      </div>
 
-      <ion-item *ngIf="videoUrl">
-        <ion-button expand="block" fill="outline" (click)="undo(); closeMenu()">
-          <ion-icon name="arrow-undo-outline" slot="start"></ion-icon>
-          Undo
-        </ion-button>
-      </ion-item>
+      <!-- Brush Size Section -->
+      <div class="menu-section" *ngIf="videoUrl">
+        <h3 class="section-title">Brush Size</h3>
+        <div class="brush-size-selector">
+          <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)" class="brush-segment">
+            <ion-segment-button value="18" class="brush-option">
+              <ion-label>S</ion-label>
+            </ion-segment-button>
+            <ion-segment-button value="60" class="brush-option">
+              <ion-label>M</ion-label>
+            </ion-segment-button>
+            <ion-segment-button value="192" class="brush-option">
+              <ion-label>L</ion-label>
+            </ion-segment-button>
+          </ion-segment>
+        </div>
+      </div>
 
-      <ion-item *ngIf="videoUrl">
-        <ion-button expand="block" fill="outline" (click)="resetFog(); closeMenu()">
-          <ion-icon name="refresh" slot="start"></ion-icon>
-          Reset Fog
-        </ion-button>
-      </ion-item>
-
-      <ion-item *ngIf="videoUrl">
-        <ion-button expand="block" fill="outline" (click)="selectVideo(); closeMenu()">
-          <ion-icon name="swap-horizontal" slot="start"></ion-icon>
-          Change Video
-        </ion-button>
-      </ion-item>
-    </ion-list>
+      <!-- Actions Section -->
+      <div class="menu-section" *ngIf="videoUrl">
+        <h3 class="section-title">Actions</h3>
+        <div class="action-buttons">
+          <ion-button class="action-button primary" expand="block" fill="solid" (click)="removeAllFog(); closeMenu()">
+            <ion-icon name="eye-outline" slot="start"></ion-icon>
+            Reveal All
+          </ion-button>
+          <ion-button class="action-button" expand="block" fill="outline" (click)="undo(); closeMenu()">
+            <ion-icon name="arrow-undo-outline" slot="start"></ion-icon>
+            Undo
+          </ion-button>
+          <ion-button class="action-button" expand="block" fill="outline" (click)="resetFog(); closeMenu()">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Reset Fog
+          </ion-button>
+        </div>
+      </div>
+    </div>
   </ion-content>
 </ion-menu>
 

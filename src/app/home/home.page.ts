@@ -1,12 +1,14 @@
-import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
-import { ActionSheetController, MenuController, AlertController } from '@ionic/angular';
+import { Component, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { ActionSheetController, MenuController, AlertController, Platform } from '@ionic/angular';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss']
 })
-export class HomePage implements AfterViewInit {
+export class HomePage implements AfterViewInit, OnDestroy {
   @ViewChild('videoElement', { static: false }) videoElement!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvasElement', { static: false }) canvasElement!: ElementRef<HTMLCanvasElement>;
   
@@ -28,11 +30,13 @@ export class HomePage implements AfterViewInit {
   private fogCtx: CanvasRenderingContext2D | null = null;
   private fogMaskDirty: boolean = false;
   private fogHistory: ImageData[] = []; // For undo functionality
+  private backButtonListener: any;
 
   constructor(
     private actionSheetController: ActionSheetController,
     private menuController: MenuController,
-    private alertController: AlertController
+    private alertController: AlertController,
+    private platform: Platform
   ) {}
   
   closeMenu() {
@@ -44,6 +48,10 @@ export class HomePage implements AfterViewInit {
   }
 
   ngAfterViewInit() {
+    // Request permissions on app start
+    this.requestPermissions();
+    // Prevent app from closing on back button
+    this.setupBackButtonHandler();
     // Wait a bit for view to initialize
     setTimeout(() => {
       if (this.videoElement?.nativeElement) {
@@ -57,6 +65,70 @@ export class HomePage implements AfterViewInit {
         this.ctx = this.canvas.getContext('2d');
       }
     }, 100);
+  }
+
+  async requestPermissions() {
+    // Only request permissions on native platforms (Android/iOS)
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    try {
+      // For Android, permissions are typically requested when needed
+      // The file picker will request permissions automatically
+      // But we can check and request them proactively for better UX
+      
+      if (this.platform.is('android')) {
+        // Android permissions are handled by the system when accessing files
+        // The file input will trigger permission requests automatically
+        console.log('📱 Android platform detected - permissions will be requested when selecting files');
+      }
+    } catch (error) {
+      console.error('❌ Error requesting permissions:', error);
+    }
+  }
+
+  setupBackButtonHandler() {
+    // Listen for back button press
+    this.backButtonListener = App.addListener('backButton', async () => {
+      // Check if menu is open, close it first
+      const isMenuOpen = await this.menuController.isOpen('main-menu');
+      if (isMenuOpen) {
+        await this.menuController.close('main-menu');
+        return;
+      }
+
+      // Show confirmation dialog before closing app
+      const alert = await this.alertController.create({
+        header: 'Exit App?',
+        message: 'Are you sure you want to exit Fog of War?',
+        cssClass: 'custom-alert',
+        buttons: [
+          {
+            text: 'Cancel',
+            role: 'cancel',
+            cssClass: 'alert-button-cancel'
+          },
+          {
+            text: 'Exit',
+            role: 'destructive',
+            cssClass: 'alert-button-destructive',
+            handler: () => {
+              App.exitApp();
+            }
+          }
+        ]
+      });
+
+      await alert.present();
+    });
+  }
+
+  ngOnDestroy() {
+    // Remove back button listener when component is destroyed
+    if (this.backButtonListener) {
+      this.backButtonListener.remove();
+    }
   }
 
   async selectVideo() {
@@ -94,9 +166,11 @@ export class HomePage implements AfterViewInit {
         const alert = await this.alertController.create({
           header: 'Add Fog of War?',
           message: 'Do you want to start with fog of war covering the video?',
+          cssClass: 'custom-alert',
           buttons: [
             {
               text: 'No Fog',
+              cssClass: 'alert-button-secondary',
               handler: () => {
                 this.hasFog = false;
                 this.loadVideo();
@@ -104,6 +178,7 @@ export class HomePage implements AfterViewInit {
             },
             {
               text: 'Add Fog',
+              cssClass: 'alert-button-primary',
               handler: () => {
                 this.hasFog = true;
                 this.loadVideo();
@@ -687,6 +762,8 @@ export class HomePage implements AfterViewInit {
     const value = event.detail.value;
     this.brushSizeStr = value;
     this.brushSize = parseInt(value, 10);
+    // Close menu after selecting brush size
+    this.closeMenu();
   }
 
   resetFog() {

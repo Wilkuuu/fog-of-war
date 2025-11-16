@@ -31,3 +31,98 @@ ion-content {
   overflow: hidden !important;
 }
 
+// Custom Alert Dialog Styles - Global
+.custom-alert {
+  --background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  --backdrop-opacity: 0.8;
+  
+  .alert-wrapper {
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  }
+  
+  .alert-head {
+    padding: 24px 24px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .alert-title {
+      color: #ffffff;
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+    }
+  }
+  
+  .alert-message {
+    padding: 16px 24px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  
+  .alert-button-group {
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .alert-button {
+    flex: 1;
+    margin: 0;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    text-transform: none;
+    min-height: 44px;
+    transition: all 0.2s ease;
+    
+    &.alert-button-cancel {
+      --background: rgba(255, 255, 255, 0.1);
+      --color: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      
+      &:hover {
+        --background: rgba(255, 255, 255, 0.15);
+      }
+    }
+    
+    &.alert-button-destructive {
+      --background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      --color: #ffffff;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      
+      &:hover {
+        --background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      }
+    }
+    
+    &.alert-button-secondary {
+      --background: rgba(255, 255, 255, 0.1);
+      --color: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      
+      &:hover {
+        --background: rgba(255, 255, 255, 0.15);
+      }
+    }
+    
+    &.alert-button-primary {
+      --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --color: #ffffff;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      
+      &:hover {
+        --background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+      }
+    }
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
