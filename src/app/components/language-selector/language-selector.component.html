@@ -1,0 +1,40 @@
+<ion-content class="language-selector-content">
+  <div class="language-selector-container">
+    <div class="language-header">
+      <div class="header-icon">🌐</div>
+      <h1 class="header-title">{{ translation.t('language.select') }}</h1>
+      <p class="header-subtitle">{{ translation.t('language.choose') }}</p>
+    </div>
+
+    <div class="language-list">
+      <button
+        *ngFor="let lang of languages"
+        class="language-option"
+        [class.selected]="selectedLanguage === lang.code"
+        (click)="selectLanguage(lang.code)">
+        <span class="language-flag">{{ lang.flag }}</span>
+        <div class="language-info">
+          <span class="language-name">{{ lang.name }}</span>
+          <span class="language-native">{{ lang.nativeName }}</span>
+        </div>
+        <ion-icon 
+          *ngIf="selectedLanguage === lang.code"
+          name="checkmark-circle" 
+          class="check-icon">
+        </ion-icon>
+      </button>
+    </div>
+
+    <div class="language-actions">
+      <ion-button 
+        fill="solid" 
+        class="confirm-button"
+        expand="block"
+        (click)="confirm()">
+        {{ translation.t('language.continue') }}
+        <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+      </ion-button>
+    </div>
+  </div>
+</ion-content>
+

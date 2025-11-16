@@ -1,24 +1,24 @@
 <ion-menu side="start" menuId="main-menu" [contentId]="contentId" class="custom-menu">
   <ion-content class="menu-content">
     <div class="menu-header">
-      <h2 class="menu-title">Fog of War</h2>
-      <p class="menu-subtitle">Controls</p>
+      <h2 class="menu-title">{{ translation.t('app.title') }}</h2>
+      <p class="menu-subtitle">{{ translation.t('app.controls') }}</p>
     </div>
 
     <div class="menu-sections">
       <!-- Video Section -->
       <div class="menu-section">
-        <h3 class="section-title">Video</h3>
+        <h3 class="section-title">{{ translation.t('menu.video') }}</h3>
         <ion-button class="menu-action-button" expand="block" fill="solid" (click)="selectVideo(); closeMenu()">
           <ion-icon name="videocam-outline" slot="start"></ion-icon>
-          <span *ngIf="!videoUrl">Select Video</span>
-          <span *ngIf="videoUrl">Change Video</span>
+          <span *ngIf="!videoUrl">{{ translation.t('empty.selectVideoButton') }}</span>
+          <span *ngIf="videoUrl">{{ translation.t('empty.changeVideoButton') }}</span>
         </ion-button>
       </div>
 
       <!-- Brush Size Section -->
       <div class="menu-section" *ngIf="videoUrl">
-        <h3 class="section-title">Brush Size</h3>
+        <h3 class="section-title">{{ translation.t('menu.brushSize') }}</h3>
         <div class="brush-size-selector">
           <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)" class="brush-segment">
             <ion-segment-button value="18" class="brush-option">
@@ -36,21 +36,30 @@
 
       <!-- Actions Section -->
       <div class="menu-section" *ngIf="videoUrl">
-        <h3 class="section-title">Actions</h3>
+        <h3 class="section-title">{{ translation.t('menu.actions') }}</h3>
         <div class="action-buttons">
           <ion-button class="action-button primary" expand="block" fill="solid" (click)="removeAllFog(); closeMenu()">
             <ion-icon name="eye-outline" slot="start"></ion-icon>
-            Reveal All
+            {{ translation.t('action.revealAll') }}
           </ion-button>
           <ion-button class="action-button" expand="block" fill="outline" (click)="undo(); closeMenu()">
             <ion-icon name="arrow-undo-outline" slot="start"></ion-icon>
-            Undo
+            {{ translation.t('action.undo') }}
           </ion-button>
           <ion-button class="action-button" expand="block" fill="outline" (click)="resetFog(); closeMenu()">
             <ion-icon name="refresh-outline" slot="start"></ion-icon>
-            Reset Fog
+            {{ translation.t('action.resetFog') }}
           </ion-button>
         </div>
+      </div>
+
+      <!-- Settings Section -->
+      <div class="menu-section">
+        <h3 class="section-title">{{ translation.t('menu.settings') }}</h3>
+        <ion-button class="menu-action-button" expand="block" fill="outline" (click)="openLanguageSelector(); closeMenu()">
+          <ion-icon name="language-outline" slot="start"></ion-icon>
+          {{ translation.t('menu.language') }}
+        </ion-button>
       </div>
     </div>
   </ion-content>
@@ -60,11 +69,11 @@
   <ion-content [fullscreen]="true" class="video-content" style="flex: 1; min-height: 0;">
     <div *ngIf="!videoUrl" class="empty-state">
       <div class="empty-state-content">
-        <h1 class="empty-state-title">Fog of War</h1>
-        <p class="empty-state-description">Select a video to begin revealing hidden content</p>
+        <h1 class="empty-state-title">{{ translation.t('app.title') }}</h1>
+        <p class="empty-state-description">{{ translation.t('empty.selectVideo') }}</p>
         <ion-button class="select-video-button" expand="block" (click)="selectVideo()">
           <ion-icon name="videocam-outline" slot="start"></ion-icon>
-          Select Video
+          {{ translation.t('empty.selectVideoButton') }}
         </ion-button>
       </div>
     </div>
