@@ -31,6 +31,11 @@ export class HomePage implements AfterViewInit, OnDestroy {
   private fogMaskDirty: boolean = false;
   private fogHistory: ImageData[] = []; // For undo functionality
   private backButtonListener: any;
+  private twoFingerTapTimeout: any = null;
+  private touchStartTime: number = 0;
+  private activeTouches: number = 0;
+  private twoFingerStartTime: number = 0;
+  private isTwoFingerGesture: boolean = false;
 
   constructor(
     private actionSheetController: ActionSheetController,
@@ -52,6 +57,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
     this.requestPermissions();
     // Prevent app from closing on back button
     this.setupBackButtonHandler();
+    // Enable full screen mode
+    this.enableFullScreen();
     // Wait a bit for view to initialize
     setTimeout(() => {
       if (this.videoElement?.nativeElement) {
@@ -65,6 +72,20 @@ export class HomePage implements AfterViewInit, OnDestroy {
         this.ctx = this.canvas.getContext('2d');
       }
     }, 100);
+  }
+
+  enableFullScreen() {
+    // Request full screen mode on web
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {
+        // Ignore errors if fullscreen is not available
+      });
+    }
+    
+    // Hide address bar on mobile browsers
+    if (this.platform.is('mobile')) {
+      window.scrollTo(0, 1);
+    }
   }
 
   async requestPermissions() {
@@ -587,9 +608,78 @@ export class HomePage implements AfterViewInit, OnDestroy {
     requestAnimationFrame(() => this.drawFog());
   }
 
+  onContainerTouch(event: TouchEvent) {
+    // Detect two-finger tap to open menu
+    if (event.touches && event.touches.length === 2) {
+      this.activeTouches = 2;
+      this.isTwoFingerGesture = true;
+      this.twoFingerStartTime = Date.now();
+      this.touchStartTime = Date.now();
+      console.log('👆 Container: Two fingers detected');
+    } else {
+      this.activeTouches = event.touches ? event.touches.length : 0;
+      if (this.activeTouches < 2) {
+        this.isTwoFingerGesture = false;
+      }
+    }
+  }
+
+  onContainerTouchEnd(event: TouchEvent) {
+    // Check for two-finger tap on container
+    const remainingTouches = event.touches ? event.touches.length : 0;
+    
+    if (this.isTwoFingerGesture && remainingTouches === 0) {
+      const touchDuration = Date.now() - this.twoFingerStartTime;
+      
+      console.log('👆 Container: Two finger gesture ended:', {
+        duration: touchDuration,
+        remainingTouches
+      });
+      
+      // If it was a quick tap (less than 500ms), open menu
+      if (touchDuration < 500) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log('✅ Opening menu via two-finger tap (container)');
+        this.openMenu();
+        this.isTwoFingerGesture = false;
+        this.activeTouches = 0;
+        return;
+      }
+    }
+    
+    // Reset if all fingers lifted
+    if (remainingTouches === 0) {
+      this.activeTouches = 0;
+      this.isTwoFingerGesture = false;
+    }
+  }
+
   onCanvasTouch(event: TouchEvent) {
-    event.preventDefault();
-    event.stopPropagation();
+    // Check for two-finger tap first
+    if (event.touches && event.touches.length === 2) {
+      // Two fingers - don't draw, just track for menu gesture
+      this.activeTouches = 2;
+      this.isTwoFingerGesture = true;
+      this.twoFingerStartTime = Date.now();
+      this.touchStartTime = Date.now();
+      console.log('👆 Two fingers detected');
+      // Don't prevent default - let the gesture complete
+      return; // Don't draw with two fingers
+    }
+    
+    // If we had two fingers but now only one, reset
+    if (this.isTwoFingerGesture && event.touches && event.touches.length === 1) {
+      this.isTwoFingerGesture = false;
+      this.activeTouches = 1;
+    }
+    
+    // Single finger - normal drawing
+    if (event.touches && event.touches.length === 1) {
+      this.isTwoFingerGesture = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }
     
     if (!event.touches || event.touches.length === 0) return;
     
@@ -616,6 +706,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
     }
     
     this.isDrawing = true;
+    this.activeTouches = 1;
     
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
@@ -625,10 +716,78 @@ export class HomePage implements AfterViewInit, OnDestroy {
     this.removeFog(x, y);
   }
 
+  onCanvasTouchMove(event: TouchEvent) {
+    // If two fingers, don't draw - just track
+    if (event.touches && event.touches.length === 2) {
+      this.activeTouches = 2;
+      this.isTwoFingerGesture = true;
+      return; // Don't draw with two fingers
+    }
+    
+    // If we had two fingers but now only one, reset
+    if (this.isTwoFingerGesture && event.touches && event.touches.length === 1) {
+      this.isTwoFingerGesture = false;
+      this.activeTouches = 1;
+    }
+    
+    // Single finger - continue drawing
+    if (this.isDrawing && event.touches && event.touches.length === 1 && !this.isTwoFingerGesture) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const touch = event.touches[0];
+      const rect = this.canvas?.getBoundingClientRect();
+      if (!rect || !this.ctx || !this.fogMask || !this.canvas) return;
+      
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      this.removeFog(x, y);
+    }
+  }
+
   onCanvasTouchEnd(event: TouchEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDrawing = false;
+    // Check for two-finger tap gesture
+    // When both fingers are lifted, event.touches.length will be 0 or 1
+    // and changedTouches will have the touches that ended
+    const remainingTouches = event.touches ? event.touches.length : 0;
+    const endedTouches = event.changedTouches ? event.changedTouches.length : 0;
+    
+    // If we had two fingers and now they're all lifted (or only 1 remaining)
+    if (this.isTwoFingerGesture && (remainingTouches === 0 || (remainingTouches <= 1 && endedTouches >= 1))) {
+      const touchDuration = Date.now() - this.twoFingerStartTime;
+      
+      console.log('👆 Two finger gesture ended:', {
+        duration: touchDuration,
+        remainingTouches,
+        endedTouches,
+        isTwoFinger: this.isTwoFingerGesture
+      });
+      
+      // If it was a quick tap (less than 500ms), open menu
+      if (touchDuration < 500) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log('✅ Opening menu via two-finger tap');
+        this.openMenu();
+        this.isTwoFingerGesture = false;
+        this.activeTouches = 0;
+        this.isDrawing = false;
+        return;
+      }
+    }
+    
+    // Single finger - normal behavior
+    if (!this.isTwoFingerGesture && this.activeTouches === 1) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.isDrawing = false;
+    }
+    
+    // Reset touch tracking if all fingers are lifted
+    if (remainingTouches === 0) {
+      this.activeTouches = 0;
+      this.isTwoFingerGesture = false;
+    }
   }
 
   onCanvasMouseDown(event: MouseEvent) {

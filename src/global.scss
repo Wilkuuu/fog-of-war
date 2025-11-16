@@ -12,12 +12,14 @@ html, body {
   height: 100%;
   width: 100%;
   overflow: hidden !important;
+  background: #000000 !important;
 }
 
 ion-app {
   height: 100%;
   width: 100%;
   overflow: hidden !important;
+  background: #000000 !important;
 }
 
 .ion-page {
@@ -25,10 +27,13 @@ ion-app {
   display: flex;
   flex-direction: column;
   overflow: hidden !important;
+  background: #000000 !important;
 }
 
 ion-content {
   overflow: hidden !important;
+  --background: #000000 !important;
+  background: #000000 !important;
 }
 
 // Custom Alert Dialog Styles - Global
