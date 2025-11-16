@@ -1,5 +1,5 @@
 import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
-import { ActionSheetController, MenuController } from '@ionic/angular';
+import { ActionSheetController, MenuController, AlertController } from '@ionic/angular';
 
 @Component({
   selector: 'app-home',
@@ -11,11 +11,12 @@ export class HomePage implements AfterViewInit {
   @ViewChild('canvasElement', { static: false }) canvasElement!: ElementRef<HTMLCanvasElement>;
   
   videoUrl: string | null = null;
-  brushSize: number = 50;
-  brushSizeStr: string = '50';
+  brushSize: number = 18;
+  brushSizeStr: string = '18';
   isDrawing: boolean = false;
   fogMask: ImageData | null = null;
   contentId: string = 'main-content';
+  hasFog: boolean = true;
   
   // Configuration: Video scale percentage (0.8 = 80% of container height)
   videoScale: number = 0.8;
@@ -26,10 +27,12 @@ export class HomePage implements AfterViewInit {
   private fogCanvas: HTMLCanvasElement | null = null;
   private fogCtx: CanvasRenderingContext2D | null = null;
   private fogMaskDirty: boolean = false;
+  private fogHistory: ImageData[] = []; // For undo functionality
 
   constructor(
     private actionSheetController: ActionSheetController,
-    private menuController: MenuController
+    private menuController: MenuController,
+    private alertController: AlertController
   ) {}
   
   closeMenu() {
@@ -73,7 +76,7 @@ export class HomePage implements AfterViewInit {
     input.style.display = 'none';
     document.body.appendChild(input);
     
-    input.onchange = (event: any) => {
+    input.onchange = async (event: any) => {
       const file = event.target.files[0];
       if (file) {
         console.log('✅ File selected:', file.name, file.type, file.size);
@@ -87,42 +90,29 @@ export class HomePage implements AfterViewInit {
         // Remove input element
         document.body.removeChild(input);
         
-        // Wait for view to update, then set video source
-        setTimeout(() => {
-          console.log('⏱️ Setting video source after timeout');
-          if (this.videoElement?.nativeElement) {
-            this.video = this.videoElement.nativeElement;
-            console.log('🎥 Video element found:', this.video);
-            this.video.src = this.videoUrl!;
-            this.video.load();
-            console.log('📥 Video load() called, readyState:', this.video.readyState);
-            
-            // Setup canvas when video metadata is loaded
-            this.video.addEventListener('loadedmetadata', () => {
-              console.log('📊 Video metadata loaded:', {
-                videoWidth: this.video?.videoWidth,
-                videoHeight: this.video?.videoHeight,
-                readyState: this.video?.readyState,
-                duration: this.video?.duration
-              });
-              if (this.canvasElement?.nativeElement && !this.ctx) {
-                this.canvas = this.canvasElement.nativeElement;
-                this.ctx = this.canvas.getContext('2d');
-                console.log('🎨 Canvas element found and context created');
+        // Ask if user wants fog of war AFTER video is selected
+        const alert = await this.alertController.create({
+          header: 'Add Fog of War?',
+          message: 'Do you want to start with fog of war covering the video?',
+          buttons: [
+            {
+              text: 'No Fog',
+              handler: () => {
+                this.hasFog = false;
+                this.loadVideo();
               }
-              this.setupCanvas();
-            }, { once: true });
-            
-            // Add more event listeners for debugging
-            this.video.addEventListener('loadstart', () => console.log('🔄 Video loadstart'));
-            this.video.addEventListener('loadeddata', () => console.log('📦 Video loadeddata'));
-            this.video.addEventListener('canplay', () => console.log('▶️ Video canplay'));
-            this.video.addEventListener('playing', () => console.log('🎬 Video playing'));
-            this.video.addEventListener('error', (e) => console.error('❌ Video error:', e));
-          } else {
-            console.error('❌ Video element not found!');
-          }
-        }, 100);
+            },
+            {
+              text: 'Add Fog',
+              handler: () => {
+                this.hasFog = true;
+                this.loadVideo();
+              }
+            }
+          ]
+        });
+        
+        await alert.present();
       } else {
         console.log('⚠️ No file selected');
         document.body.removeChild(input);
@@ -136,6 +126,45 @@ export class HomePage implements AfterViewInit {
     
     // Trigger file picker
     input.click();
+  }
+
+  loadVideo() {
+    // Wait for view to update, then set video source
+    setTimeout(() => {
+      console.log('⏱️ Setting video source after timeout');
+      if (this.videoElement?.nativeElement) {
+        this.video = this.videoElement.nativeElement;
+        console.log('🎥 Video element found:', this.video);
+        this.video.src = this.videoUrl!;
+        this.video.load();
+        console.log('📥 Video load() called, readyState:', this.video.readyState);
+        
+        // Setup canvas when video metadata is loaded
+        this.video.addEventListener('loadedmetadata', () => {
+          console.log('📊 Video metadata loaded:', {
+            videoWidth: this.video?.videoWidth,
+            videoHeight: this.video?.videoHeight,
+            readyState: this.video?.readyState,
+            duration: this.video?.duration
+          });
+          if (this.canvasElement?.nativeElement && !this.ctx) {
+            this.canvas = this.canvasElement.nativeElement;
+            this.ctx = this.canvas.getContext('2d');
+            console.log('🎨 Canvas element found and context created');
+          }
+          this.setupCanvas();
+        }, { once: true });
+        
+        // Add more event listeners for debugging
+        this.video.addEventListener('loadstart', () => console.log('🔄 Video loadstart'));
+        this.video.addEventListener('loadeddata', () => console.log('📦 Video loadeddata'));
+        this.video.addEventListener('canplay', () => console.log('▶️ Video canplay'));
+        this.video.addEventListener('playing', () => console.log('🎬 Video playing'));
+        this.video.addEventListener('error', (e) => console.error('❌ Video error:', e));
+      } else {
+        console.error('❌ Video element not found!');
+      }
+    }, 100);
   }
 
   setupCanvas() {
@@ -289,9 +318,16 @@ export class HomePage implements AfterViewInit {
         return;
       }
       
-      // Initialize fog mask (fully opaque black - completely hides video)
-      maskCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
-      maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+      // Initialize fog mask based on hasFog setting
+      if (this.hasFog) {
+        // Fully opaque black - completely hides video
+        maskCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
+        maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+      } else {
+        // Fully transparent - shows all video
+        maskCtx.fillStyle = 'rgba(0, 0, 0, 0.0)';
+        maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+      }
       
       // Verify mask was created correctly
       const testMaskPixel = maskCtx.getImageData(100, 100, 1, 1);
@@ -305,6 +341,8 @@ export class HomePage implements AfterViewInit {
       
       // Store the initial mask
       this.fogMask = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+      // Clear history when setting up new video
+      this.fogHistory = [];
       
       // Create cached fog canvas at canvas resolution
       this.fogCanvas = document.createElement('canvas');
@@ -314,6 +352,7 @@ export class HomePage implements AfterViewInit {
       
       // Scale fog context to match main canvas
       if (this.fogCtx) {
+        this.fogCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
         this.fogCtx.scale(dpr, dpr);
         // Draw the mask scaled to display size
         this.fogCtx.putImageData(this.fogMask, 0, 0);
@@ -416,11 +455,14 @@ export class HomePage implements AfterViewInit {
           });
         }
         
-        // Draw video - scale to canvas display size (context is already scaled by DPR)
-        const drawWidth = this.canvas.width / (window.devicePixelRatio || 1);
-        const drawHeight = this.canvas.height / (window.devicePixelRatio || 1);
-        
-        this.ctx.drawImage(this.video, 0, 0, drawWidth, drawHeight);
+      // Draw video - use canvas display size (accounting for DPR scaling)
+      // The context was scaled by DPR, so we need to draw at the display size
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = this.canvas.width / dpr;
+      const displayHeight = this.canvas.height / dpr;
+      
+      // Clear and draw video frame
+      this.ctx.drawImage(this.video, 0, 0, displayWidth, displayHeight);
         
         if (this.drawCount === 0) {
           console.log('✅ Video frame drawn to canvas');
@@ -472,25 +514,69 @@ export class HomePage implements AfterViewInit {
 
   onCanvasTouch(event: TouchEvent) {
     event.preventDefault();
+    event.stopPropagation();
+    
+    if (!event.touches || event.touches.length === 0) return;
+    
     const touch = event.touches[0];
     const rect = this.canvas?.getBoundingClientRect();
-    if (!rect || !this.ctx || !this.fogMask) return;
+    if (!rect || !this.ctx || !this.fogMask || !this.canvas) {
+      console.log('❌ Touch: Missing elements', {
+        rect: !!rect,
+        ctx: !!this.ctx,
+        fogMask: !!this.fogMask,
+        canvas: !!this.canvas
+      });
+      return;
+    }
+    
+    // Save history when starting a new stroke
+    if (!this.isDrawing && this.fogMask) {
+      const historyMask = new ImageData(this.fogMask.width, this.fogMask.height);
+      historyMask.data.set(this.fogMask.data);
+      this.fogHistory.push(historyMask);
+      if (this.fogHistory.length > 50) {
+        this.fogHistory.shift();
+      }
+    }
+    
+    this.isDrawing = true;
     
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
     
+    console.log('👆 Touch event:', { x, y, clientX: touch.clientX, clientY: touch.clientY, rect });
+    
     this.removeFog(x, y);
+  }
+
+  onCanvasTouchEnd(event: TouchEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDrawing = false;
   }
 
   onCanvasMouseDown(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    this.isDrawing = true;
+    
     const rect = this.canvas?.getBoundingClientRect();
     if (!rect) {
       console.error('❌ MouseDown: No rect');
       return;
     }
+    
+    // Save history when starting a new stroke
+    if (!this.isDrawing && this.fogMask) {
+      const historyMask = new ImageData(this.fogMask.width, this.fogMask.height);
+      historyMask.data.set(this.fogMask.data);
+      this.fogHistory.push(historyMask);
+      if (this.fogHistory.length > 50) {
+        this.fogHistory.shift();
+      }
+    }
+    
+    this.isDrawing = true;
     
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -526,15 +612,17 @@ export class HomePage implements AfterViewInit {
       return;
     }
     
-    // Scale coordinates to canvas size
+    // Scale coordinates to canvas size (accounting for DPR)
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) {
       console.error('❌ Canvas has zero dimensions');
       return;
     }
     
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
+    const dpr = window.devicePixelRatio || 1;
+    // Canvas internal size is display size * DPR, so we need to scale by DPR
+    const scaleX = (this.canvas.width / dpr) / rect.width;
+    const scaleY = (this.canvas.height / dpr) / rect.height;
     const canvasX = x * scaleX;
     const canvasY = y * scaleY;
     
@@ -552,24 +640,32 @@ export class HomePage implements AfterViewInit {
     updatedMask.data.set(this.fogMask.data);
     
     // Apply brush to mask by making pixels transparent
-    const radius = this.brushSize * scaleX;
+    // Use display size for mask coordinates (mask is at display resolution)
+    const displayWidth = this.canvas.width / dpr;
+    const displayHeight = this.canvas.height / dpr;
+    
+    // Scale coordinates to mask size (mask is at display resolution, not DPR-scaled)
+    const maskX = canvasX;
+    const maskY = canvasY;
+    const radius = this.brushSize;
     const radiusSquared = radius * radius;
     
-    // Calculate bounds for the brush area
-    const minX = Math.max(0, Math.floor(canvasX - radius));
-    const maxX = Math.min(this.canvas.width, Math.ceil(canvasX + radius));
-    const minY = Math.max(0, Math.floor(canvasY - radius));
-    const maxY = Math.min(this.canvas.height, Math.ceil(canvasY + radius));
+    // Calculate bounds for the brush area (using mask dimensions)
+    const minX = Math.max(0, Math.floor(maskX - radius));
+    const maxX = Math.min(this.fogMask.width, Math.ceil(maskX + radius));
+    const minY = Math.max(0, Math.floor(maskY - radius));
+    const maxY = Math.min(this.fogMask.height, Math.ceil(maskY + radius));
     
     let pixelsRemoved = 0;
     for (let py = minY; py < maxY; py++) {
       for (let px = minX; px < maxX; px++) {
-        const dx = px - canvasX;
-        const dy = py - canvasY;
+        const dx = px - maskX;
+        const dy = py - maskY;
         const distSquared = dx * dx + dy * dy;
         
         if (distSquared <= radiusSquared) {
-          const index = (py * this.canvas.width + px) * 4;
+          // Use mask dimensions (display size), not canvas dimensions
+          const index = (py * this.fogMask.width + px) * 4;
           updatedMask.data[index + 3] = 0; // Set alpha to 0 (transparent)
           pixelsRemoved++;
         }
@@ -594,12 +690,21 @@ export class HomePage implements AfterViewInit {
   }
 
   resetFog() {
-    if (!this.canvas) return;
+    if (!this.canvas || !this.fogMask) return;
+    
+    // Save current state to history
+    const historyMask = new ImageData(this.fogMask.width, this.fogMask.height);
+    historyMask.data.set(this.fogMask.data);
+    this.fogHistory.push(historyMask);
+    if (this.fogHistory.length > 50) {
+      this.fogHistory.shift();
+    }
     
     // Create a new mask canvas
     const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = this.canvas.width;
-    maskCanvas.height = this.canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    maskCanvas.width = this.canvas.width / dpr;
+    maskCanvas.height = this.canvas.height / dpr;
     const maskCtx = maskCanvas.getContext('2d');
     
     if (!maskCtx) return;
@@ -610,6 +715,63 @@ export class HomePage implements AfterViewInit {
     this.fogMaskDirty = true; // Mark as dirty
     
     console.log('🔄 Fog reset');
+  }
+
+  removeAllFog() {
+    if (!this.canvas || !this.fogMask) return;
+    
+    // Save current state to history
+    const historyMask = new ImageData(this.fogMask.width, this.fogMask.height);
+    historyMask.data.set(this.fogMask.data);
+    this.fogHistory.push(historyMask);
+    if (this.fogHistory.length > 50) {
+      this.fogHistory.shift();
+    }
+    
+    // Create a new mask canvas with fully transparent mask
+    const maskCanvas = document.createElement('canvas');
+    const dpr = window.devicePixelRatio || 1;
+    maskCanvas.width = this.fogMask.width;
+    maskCanvas.height = this.fogMask.height;
+    const maskCtx = maskCanvas.getContext('2d');
+    
+    if (!maskCtx) return;
+    
+    maskCtx.fillStyle = 'rgba(0, 0, 0, 0.0)';
+    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+    this.fogMask = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    this.fogMaskDirty = true; // Mark as dirty
+    
+    // Update fog canvas
+    if (this.fogCtx) {
+      this.fogCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+      this.fogCtx.scale(dpr, dpr);
+      this.fogCtx.putImageData(this.fogMask, 0, 0);
+    }
+    
+    console.log('👁️ All fog removed');
+  }
+
+  undo() {
+    if (this.fogHistory.length === 0 || !this.fogMask) {
+      console.log('⚠️ No history to undo');
+      return;
+    }
+    
+    // Restore previous state
+    const previousMask = this.fogHistory.pop()!;
+    this.fogMask = previousMask;
+    this.fogMaskDirty = true; // Mark as dirty
+    
+    // Update fog canvas
+    if (this.fogCtx) {
+      const dpr = window.devicePixelRatio || 1;
+      this.fogCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+      this.fogCtx.scale(dpr, dpr);
+      this.fogCtx.putImageData(this.fogMask, 0, 0);
+    }
+    
+    console.log('↩️ Undo - history remaining:', this.fogHistory.length);
   }
 }
 

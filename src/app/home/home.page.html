@@ -23,7 +23,7 @@
       
       <ion-item>
         <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)" style="width: 100%;">
-          <ion-segment-button value="30">
+          <ion-segment-button value="18">
             <ion-label>Small</ion-label>
           </ion-segment-button>
           <ion-segment-button value="50">
@@ -35,7 +35,21 @@
         </ion-segment>
       </ion-item>
 
-      <ion-item>
+      <ion-item *ngIf="videoUrl">
+        <ion-button expand="block" fill="outline" color="success" (click)="removeAllFog(); closeMenu()">
+          <ion-icon name="eye-outline" slot="start"></ion-icon>
+          Remove All Fog
+        </ion-button>
+      </ion-item>
+
+      <ion-item *ngIf="videoUrl">
+        <ion-button expand="block" fill="outline" (click)="undo(); closeMenu()">
+          <ion-icon name="arrow-undo-outline" slot="start"></ion-icon>
+          Undo
+        </ion-button>
+      </ion-item>
+
+      <ion-item *ngIf="videoUrl">
         <ion-button expand="block" fill="outline" (click)="resetFog(); closeMenu()">
           <ion-icon name="refresh" slot="start"></ion-icon>
           Reset Fog
@@ -55,10 +69,17 @@
 <div class="ion-page" [id]="contentId" style="height: 100vh; display: flex; flex-direction: column;">
   <ion-content [fullscreen]="true" class="video-content" style="flex: 1; min-height: 0;">
     <div *ngIf="!videoUrl" class="empty-state">
-      <ion-button expand="block" (click)="selectVideo()">
-        <ion-icon name="videocam-outline" slot="start"></ion-icon>
-        Select Video
-      </ion-button>
+      <div class="empty-state-content">
+        <div class="empty-state-icon">
+          <ion-icon name="videocam-outline"></ion-icon>
+        </div>
+        <h1 class="empty-state-title">Fog of War</h1>
+        <p class="empty-state-description">Select a video to begin revealing hidden content</p>
+        <ion-button class="select-video-button" expand="block" (click)="selectVideo()">
+          <ion-icon name="videocam-outline" slot="start"></ion-icon>
+          Select Video
+        </ion-button>
+      </div>
     </div>
 
     <div *ngIf="videoUrl" class="video-container">
@@ -77,6 +98,7 @@
         class="fog-canvas"
         (touchstart)="onCanvasTouch($event)"
         (touchmove)="onCanvasTouch($event)"
+        (touchend)="onCanvasTouchEnd($event)"
         (mousedown)="onCanvasMouseDown($event)"
         (mousemove)="onCanvasMouseMove($event)"
         (mouseup)="onCanvasMouseUp()"
