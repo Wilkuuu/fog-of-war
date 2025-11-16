@@ -1,0 +1,47 @@
+<ion-content class="tutorial-content">
+  <div class="tutorial-container">
+    <div class="tutorial-header">
+      <h1 class="tutorial-title">{{ translation.t('tutorial.welcome') }}</h1>
+      <button class="skip-button" (click)="skip()">
+        {{ translation.t('tutorial.skip') }}
+      </button>
+    </div>
+
+    <div class="tutorial-step">
+      <div class="step-icon">
+        <ion-icon [name]="steps[currentStep].icon"></ion-icon>
+      </div>
+      <h2 class="step-title">{{ translation.t(steps[currentStep].titleKey) }}</h2>
+      <p class="step-description">{{ translation.t(steps[currentStep].descriptionKey) }}</p>
+    </div>
+
+    <div class="tutorial-indicators">
+      <div 
+        *ngFor="let step of steps; let i = index" 
+        class="indicator"
+        [class.active]="i === currentStep">
+      </div>
+    </div>
+
+    <div class="tutorial-actions">
+      <ion-button 
+        *ngIf="!isFirstStep"
+        fill="outline" 
+        class="nav-button"
+        (click)="previous()">
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        {{ translation.t('tutorial.previous') }}
+      </ion-button>
+      
+      <ion-button 
+        fill="solid" 
+        class="nav-button primary"
+        (click)="next()">
+        <span *ngIf="!isLastStep">{{ translation.t('tutorial.next') }}</span>
+        <span *ngIf="isLastStep">{{ translation.t('tutorial.gotIt') }}</span>
+        <ion-icon *ngIf="!isLastStep" name="arrow-forward-outline" slot="end"></ion-icon>
+      </ion-button>
+    </div>
+  </div>
+</ion-content>
+

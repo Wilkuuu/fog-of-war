@@ -1,7 +1,10 @@
 import { Component, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { ActionSheetController, MenuController, AlertController, Platform } from '@ionic/angular';
+import { ActionSheetController, MenuController, AlertController, Platform, ModalController } from '@ionic/angular';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { TranslationService } from '../services/translation.service';
+import { TutorialComponent } from '../components/tutorial/tutorial.component';
+import { LanguageSelectorComponent } from '../components/language-selector/language-selector.component';
 
 @Component({
   selector: 'app-home',
@@ -41,7 +44,9 @@ export class HomePage implements AfterViewInit, OnDestroy {
     private actionSheetController: ActionSheetController,
     private menuController: MenuController,
     private alertController: AlertController,
-    private platform: Platform
+    private platform: Platform,
+    private modalController: ModalController,
+    public translation: TranslationService
   ) {}
   
   closeMenu() {
@@ -59,6 +64,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
     this.setupBackButtonHandler();
     // Enable full screen mode
     this.enableFullScreen();
+    // Show tutorial on first launch
+    this.checkAndShowTutorial();
     // Wait a bit for view to initialize
     setTimeout(() => {
       if (this.videoElement?.nativeElement) {
@@ -72,6 +79,58 @@ export class HomePage implements AfterViewInit, OnDestroy {
         this.ctx = this.canvas.getContext('2d');
       }
     }, 100);
+  }
+
+  async checkAndShowTutorial() {
+    // First check if language has been selected
+    const languageSelected = localStorage.getItem('fog-of-war-language-selected');
+    
+    if (!languageSelected) {
+      // Show language selector first
+      setTimeout(async () => {
+        const langModal = await this.modalController.create({
+          component: LanguageSelectorComponent,
+          cssClass: 'language-selector-modal',
+          backdropDismiss: false
+        });
+        await langModal.present();
+        
+        // Wait for language selector to close, then show tutorial
+        langModal.onDidDismiss().then(async () => {
+          const tutorialCompleted = localStorage.getItem('fog-of-war-tutorial-completed');
+          if (!tutorialCompleted) {
+            const tutorialModal = await this.modalController.create({
+              component: TutorialComponent,
+              cssClass: 'tutorial-modal',
+              backdropDismiss: false
+            });
+            await tutorialModal.present();
+          }
+        });
+      }, 500);
+    } else {
+      // Language already selected, just check tutorial
+      const tutorialCompleted = localStorage.getItem('fog-of-war-tutorial-completed');
+      if (!tutorialCompleted) {
+        setTimeout(async () => {
+          const modal = await this.modalController.create({
+            component: TutorialComponent,
+            cssClass: 'tutorial-modal',
+            backdropDismiss: false
+          });
+          await modal.present();
+        }, 500);
+      }
+    }
+  }
+
+  async openLanguageSelector() {
+    const modal = await this.modalController.create({
+      component: LanguageSelectorComponent,
+      cssClass: 'language-selector-modal',
+      backdropDismiss: true
+    });
+    await modal.present();
   }
 
   enableFullScreen() {
@@ -121,17 +180,17 @@ export class HomePage implements AfterViewInit, OnDestroy {
 
       // Show confirmation dialog before closing app
       const alert = await this.alertController.create({
-        header: 'Exit App?',
-        message: 'Are you sure you want to exit Fog of War?',
+        header: this.translation.t('alert.exitApp'),
+        message: this.translation.t('alert.exitConfirm'),
         cssClass: 'custom-alert',
         buttons: [
           {
-            text: 'Cancel',
+            text: this.translation.t('alert.cancel'),
             role: 'cancel',
             cssClass: 'alert-button-cancel'
           },
           {
-            text: 'Exit',
+            text: this.translation.t('alert.exit'),
             role: 'destructive',
             cssClass: 'alert-button-destructive',
             handler: () => {
@@ -185,12 +244,12 @@ export class HomePage implements AfterViewInit, OnDestroy {
         
         // Ask if user wants fog of war AFTER video is selected
         const alert = await this.alertController.create({
-          header: 'Add Fog of War?',
-          message: 'Do you want to start with fog of war covering the video?',
+          header: this.translation.t('alert.addFog'),
+          message: this.translation.t('alert.addFogMessage'),
           cssClass: 'custom-alert',
           buttons: [
             {
-              text: 'No Fog',
+              text: this.translation.t('alert.noFog'),
               cssClass: 'alert-button-secondary',
               handler: () => {
                 this.hasFog = false;
@@ -198,7 +257,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
               }
             },
             {
-              text: 'Add Fog',
+              text: this.translation.t('alert.addFogButton'),
               cssClass: 'alert-button-primary',
               handler: () => {
                 this.hasFog = true;
