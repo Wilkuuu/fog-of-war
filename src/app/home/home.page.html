@@ -34,6 +34,17 @@
         </div>
       </div>
 
+      <!-- Video Rotation Section -->
+      <div class="menu-section" *ngIf="videoUrl">
+        <h3 class="section-title">Video</h3>
+        <div class="action-buttons">
+          <ion-button class="action-button" expand="block" fill="outline" (click)="rotateVideo(); closeMenu()">
+            <ion-icon name="sync-outline" slot="start"></ion-icon>
+            Rotate ({{videoRotation}}°)
+          </ion-button>
+        </div>
+      </div>
+
       <!-- Actions Section -->
       <div class="menu-section" *ngIf="videoUrl">
         <h3 class="section-title">Actions</h3>

@@ -22,6 +22,10 @@ export class HomePage implements AfterViewInit, OnDestroy {
   
   // Configuration: Video scale percentage (0.8 = 80% of container height)
   videoScale: number = 0.8;
+  // Video zoom level (1.0 = 100%, 2.0 = 200%, etc.)
+  videoZoom: number = 1.0;
+  // Video rotation in degrees (0, 90, 180, 270)
+  videoRotation: number = 0;
   
   private ctx: CanvasRenderingContext2D | null = null;
   private video: HTMLVideoElement | null = null;
@@ -225,6 +229,9 @@ export class HomePage implements AfterViewInit, OnDestroy {
   }
 
   loadVideo() {
+    // Reset zoom when loading new video
+    this.videoZoom = 1.0;
+    
     // Wait for view to update, then set video source
     setTimeout(() => {
       console.log('⏱️ Setting video source after timeout');
@@ -243,6 +250,17 @@ export class HomePage implements AfterViewInit, OnDestroy {
             readyState: this.video?.readyState,
             duration: this.video?.duration
           });
+          
+          // Auto-detect portrait video and rotate if needed
+          // Portrait videos (height > width) should be rotated 90° to display horizontally
+          if (this.video && this.video.videoHeight > this.video.videoWidth) {
+            this.videoRotation = 90;
+            console.log('🔄 Auto-rotating portrait video (', this.video.videoWidth, 'x', this.video.videoHeight, ') to horizontal');
+          } else {
+            this.videoRotation = 0;
+            console.log('📐 Landscape video (', this.video?.videoWidth, 'x', this.video?.videoHeight, ') - no rotation needed');
+          }
+          
           if (this.canvasElement?.nativeElement && !this.ctx) {
             this.canvas = this.canvasElement.nativeElement;
             this.ctx = this.canvas.getContext('2d');
@@ -332,40 +350,34 @@ export class HomePage implements AfterViewInit, OnDestroy {
         return;
       }
       
-      // Apply scale factor to container height (e.g., 80% = 0.8)
-      const scaledContainerHeight = containerHeight * this.videoScale;
-      const scaledContainerWidth = containerWidth;
+      // Use full container size (no videoScale) to maximize video display
+      const containerWidthForVideo = containerWidth;
+      const containerHeightForVideo = containerHeight;
       
       // Get video dimensions and aspect ratio
-      const videoWidth = this.video.videoWidth;
-      const videoHeight = this.video.videoHeight;
-      const videoAspect = videoWidth / videoHeight;
-      const containerAspect = scaledContainerWidth / scaledContainerHeight;
+      // If video is rotated 90° or 270°, swap dimensions for canvas calculation
+      let effectiveVideoWidth = this.video.videoWidth;
+      let effectiveVideoHeight = this.video.videoHeight;
       
-      // Determine which side of the video is longer
-      const videoIsWider = videoWidth > videoHeight;
+      if (this.videoRotation === 90 || this.videoRotation === 270) {
+        // Swap dimensions when rotated 90/270 degrees
+        [effectiveVideoWidth, effectiveVideoHeight] = [effectiveVideoHeight, effectiveVideoWidth];
+      }
       
-      // Calculate display size: fit the longer side to scaled container and scale proportionally
+      const videoAspect = effectiveVideoWidth / effectiveVideoHeight;
+      const containerAspect = containerWidthForVideo / containerHeightForVideo;
+      
+      // Calculate display size: fit video maintaining aspect ratio, fit to longer side
       let displayWidth, displayHeight;
       
-      if (videoIsWider) {
-        // Video is wider (landscape) - fit width to container, scale height
-        displayWidth = Math.min(scaledContainerWidth, scaledContainerHeight * videoAspect);
-        displayHeight = displayWidth / videoAspect;
+      if (videoAspect > containerAspect) {
+        // Video is wider than container - fit to container width, scale height proportionally
+        displayWidth = containerWidthForVideo;
+        displayHeight = containerWidthForVideo / videoAspect;
       } else {
-        // Video is taller (portrait) or square - fit height to scaled container, scale width
-        displayHeight = Math.min(scaledContainerHeight, scaledContainerWidth / videoAspect);
-        displayWidth = displayHeight * videoAspect;
-      }
-      
-      // Ensure we don't exceed scaled container bounds
-      if (displayWidth > scaledContainerWidth) {
-        displayWidth = scaledContainerWidth;
-        displayHeight = scaledContainerWidth / videoAspect;
-      }
-      if (displayHeight > scaledContainerHeight) {
-        displayHeight = scaledContainerHeight;
-        displayWidth = scaledContainerHeight * videoAspect;
+        // Video is taller than container - fit to container height, scale width proportionally
+        displayHeight = containerHeightForVideo;
+        displayWidth = containerHeightForVideo * videoAspect;
       }
       
       console.log('📐 Calculated sizes:', {
@@ -373,7 +385,10 @@ export class HomePage implements AfterViewInit, OnDestroy {
         displayHeight,
         videoAspect: videoAspect.toFixed(2),
         containerAspect: containerAspect.toFixed(2),
-        videoSize: `${this.video.videoWidth}x${this.video.videoHeight}`
+        videoSize: `${this.video.videoWidth}x${this.video.videoHeight}`,
+        effectiveVideoSize: `${effectiveVideoWidth}x${effectiveVideoHeight}`,
+        videoRotation: this.videoRotation,
+        containerSize: `${containerWidthForVideo}x${containerHeightForVideo}`
       });
       
       // Set canvas display size using explicit pixel values
@@ -542,23 +557,62 @@ export class HomePage implements AfterViewInit, OnDestroy {
         const videoHeight = this.video.videoHeight;
         
         if (this.drawCount === 0) {
+          const dpr = window.devicePixelRatio || 1;
+          const displayWidth = this.canvas.width / dpr;
+          const displayHeight = this.canvas.height / dpr;
           console.log('🎥 Drawing video:', {
             videoSize: `${videoWidth}x${videoHeight}`,
             canvasSize: `${this.canvas.width}x${this.canvas.height}`,
+            displaySize: `${displayWidth}x${displayHeight}`,
+            videoAspect: (videoWidth / videoHeight).toFixed(3),
+            displayAspect: (displayWidth / displayHeight).toFixed(3),
+            videoRotation: this.videoRotation,
+            videoZoom: this.videoZoom,
             videoCurrentTime: this.video.currentTime,
             videoPaused: this.video.paused,
             videoEnded: this.video.ended
           });
         }
         
-      // Draw video - use canvas display size (accounting for DPR scaling)
-      // The context was scaled by DPR, so we need to draw at the display size
-      const dpr = window.devicePixelRatio || 1;
-      const displayWidth = this.canvas.width / dpr;
-      const displayHeight = this.canvas.height / dpr;
-      
-      // Clear and draw video frame
-      this.ctx.drawImage(this.video, 0, 0, displayWidth, displayHeight);
+        // Draw video - canvas is already sized correctly in setupCanvas() with proper aspect ratio
+        const dpr = window.devicePixelRatio || 1;
+        const displayWidth = this.canvas.width / dpr;
+        const displayHeight = this.canvas.height / dpr;
+        
+        // Calculate draw size - canvas is sized for rotated video, so we need to swap dimensions
+        // if rotation is 90° or 270° to match the original video orientation
+        let drawWidth = displayWidth * this.videoZoom;
+        let drawHeight = displayHeight * this.videoZoom;
+        
+        // For 90° and 270° rotations, swap dimensions because canvas is sized for rotated video
+        // but we're drawing the original video which needs to be rotated
+        if (this.videoRotation === 90 || this.videoRotation === 270) {
+          [drawWidth, drawHeight] = [drawHeight, drawWidth];
+        }
+        
+        // Apply rotation
+        this.ctx.save();
+        
+        // Move to center of canvas
+        this.ctx.translate(displayWidth / 2, displayHeight / 2);
+        
+        // Apply rotation if needed
+        if (this.videoRotation !== 0) {
+          this.ctx.rotate((this.videoRotation * Math.PI) / 180);
+        }
+        
+        // Draw video frame - use full video dimensions, draw with swapped dimensions if rotated
+        // This ensures the video maintains its aspect ratio after rotation
+        this.ctx.drawImage(
+          this.video, 
+          0, 0, videoWidth, videoHeight,  // Source: full video (720x1280)
+          -drawWidth / 2, 
+          -drawHeight / 2, 
+          drawWidth,   // Will be swapped for 90/270 rotation
+          drawHeight   // Will be swapped for 90/270 rotation
+        );
+        
+        this.ctx.restore();
         
         if (this.drawCount === 0) {
           console.log('✅ Video frame drawn to canvas');
@@ -1008,6 +1062,12 @@ export class HomePage implements AfterViewInit, OnDestroy {
     }
     
     console.log('↩️ Undo - history remaining:', this.fogHistory.length);
+  }
+
+  rotateVideo() {
+    // Rotate 90 degrees clockwise
+    this.videoRotation = (this.videoRotation + 90) % 360;
+    console.log('🔄 Video rotation:', this.videoRotation);
   }
 }
 
