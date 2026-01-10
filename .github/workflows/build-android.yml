@@ -7,14 +7,14 @@ on:
       - master
       - develop
       - dev
+      - 'feature/**'
+      - 'fix/**'
+      - 'hotfix/**'
     tags:
       - 'v*'
   pull_request:
     branches:
-      - main
-      - master
-      - develop
-      - dev
+      - '**'  # Wszystkie branche
   workflow_dispatch:
   release:
     types: [published]
