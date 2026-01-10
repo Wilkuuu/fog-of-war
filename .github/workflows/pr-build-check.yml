@@ -53,14 +53,21 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
+            const jobStatus = '${{ job.status }}';
+            const isSuccess = jobStatus === 'success';
+            const status = isSuccess ? '✅' : '❌';
+            const buildResult = isSuccess ? 'Pomyślny' : 'Nieudany';
+            const buildMessage = isSuccess 
+              ? '✅ Build zakończony pomyślnie. Można mergować.' 
+              : '❌ Build nieudany. Proszę sprawdzić błędy przed mergem.';
+            
             const message = `## 🔨 Build Status: ${status}
             
-            **Build Result:** ${{ job.status === 'success' && 'Pomyślny' || 'Nieudany' }}
+            **Build Result:** ${buildResult}
             **Branch:** \`${{ github.head_ref }}\`
             **Commit:** \`${{ github.sha }}\`
             
-            ${{ job.status === 'success' && '✅ Build zakończony pomyślnie. Można mergować.' || '❌ Build nieudany. Proszę sprawdzić błędy przed mergem.' }}
+            ${buildMessage}
             
             *Automatyczna wiadomość z GitHub Actions*
             `;
