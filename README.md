@@ -16,6 +16,17 @@ An Ionic Angular app that allows you to select videos from your device and apply
 - 🎨 Modern dark UI with gradient buttons and glassmorphic design
 - 🔒 Prevents accidental app closure with confirmation dialog
 
+## Screenshots
+
+| | |
+|:-------------------------:|:-------------------------:|
+| ![Wybieranie wideo](screenshots/Screenshot_20260208_114652_Fog%20of%20War.jpg) | ![Odtwarzanie z mgłą](screenshots/Screenshot_20260208_114703_Fog%20of%20War.jpg) |
+| *Wybieranie wideo* | *Odtwarzanie z mgłą wojny* |
+| ![Usuwanie mgły pędzlem](screenshots/Screenshot_20260208_114712_Fog%20of%20War.jpg) | ![Menu aplikacji](screenshots/Screenshot_20260208_114717_Fog%20of%20War.jpg) |
+| *Usuwanie mgły pędzlem* | *Menu z opcjami* |
+| ![Pełny widok](screenshots/Screenshot_20260208_114724_Fog%20of%20War.jpg) | |
+| *Pełny widok odsłoniętego wideo* | |
+
 ## Prerequisites
 
 - Node.js (v16 or higher)
