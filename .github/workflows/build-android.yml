@@ -13,12 +13,16 @@ on:
       - 'release/**'
     tags:
       - 'v*'
+      - 'latest'
   pull_request:
     branches:
       - '**'
   workflow_dispatch:
   release:
     types: [published]
+
+permissions:
+  contents: write
 
 jobs:
   build-android:
@@ -103,18 +107,23 @@ jobs:
         id: version
         run: |
           BASE_VERSION=$(node -p "require('./package.json').version")
-          
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          BUILD_NUMBER=${{ github.run_number }}
+
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             BRANCH_NAME=${GITHUB_HEAD_REF}
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            BRANCH_NAME=${GITHUB_REF#refs/tags/}
           else
             BRANCH_NAME=${GITHUB_REF#refs/heads/}
           fi
           BRANCH_NAME=${BRANCH_NAME//\//-}
-          
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          BUILD_NUMBER=${{ github.run_number }}
-          
-          if [[ "$BRANCH_NAME" == "develop" || "$BRANCH_NAME" == "dev" ]]; then
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION_NAME="${BASE_VERSION}-${TAG_NAME}+build.${BUILD_NUMBER}.${COMMIT_HASH}"
+            VERSION_SUFFIX="${TAG_NAME}"
+          elif [[ "$BRANCH_NAME" == "develop" || "$BRANCH_NAME" == "dev" ]]; then
             VERSION_NAME="${BASE_VERSION}-dev+build.${BUILD_NUMBER}.${COMMIT_HASH}"
             VERSION_SUFFIX="dev"
           elif [[ "$BRANCH_NAME" == "master" || "$BRANCH_NAME" == "main" ]]; then
@@ -124,15 +133,19 @@ jobs:
             VERSION_NAME="${BASE_VERSION}-${BRANCH_NAME}+build.${BUILD_NUMBER}.${COMMIT_HASH}"
             VERSION_SUFFIX="${BRANCH_NAME}"
           fi
-          
+
+          # Filesystem-safe version for artifact filenames
+          FILE_VERSION=$(echo "${VERSION_NAME}" | sed 's/[+\/]/-/g; s/[^A-Za-z0-9._-]/-/g; s/--*/-/g')
           VERSION_CODE=$(( ${{ github.run_number }} * 1000 ))
-          
+
           echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_OUTPUT
           echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_OUTPUT
           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_OUTPUT
           echo "VERSION_SUFFIX=${VERSION_SUFFIX}" >> $GITHUB_OUTPUT
-          
+          echo "FILE_VERSION=${FILE_VERSION}" >> $GITHUB_OUTPUT
+
           echo "Generated version: ${VERSION_NAME}"
+          echo "File version: ${FILE_VERSION}"
           echo "Version code: ${VERSION_CODE}"
 
       - name: Decode upload keystore
@@ -150,7 +163,6 @@ jobs:
           keyAlias=${ANDROID_KEY_ALIAS}
           keyPassword=${ANDROID_KEY_PASSWORD}
           EOF
-          # Strip accidental leading whitespace from heredoc lines
           sed -i 's/^[[:space:]]*//' android/keystore.properties
 
       - name: Build Debug APK
@@ -179,10 +191,30 @@ jobs:
             -PVERSION_CODE="${{ steps.version.outputs.VERSION_CODE }}" \
             -PBRANCH_NAME="${{ steps.version.outputs.BRANCH_NAME }}"
 
+      - name: Prepare versioned release artifacts
+        if: github.event_name != 'pull_request'
+        id: artifacts
+        run: |
+          mkdir -p release-artifacts
+          FILE_VERSION="${{ steps.version.outputs.FILE_VERSION }}"
+
+          APK_SRC=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          AAB_SRC=$(ls android/app/build/outputs/bundle/release/*.aab | head -1)
+
+          APK_OUT="release-artifacts/fog-of-war-${FILE_VERSION}.apk"
+          AAB_OUT="release-artifacts/fog-of-war-${FILE_VERSION}.aab"
+
+          cp "$APK_SRC" "$APK_OUT"
+          cp "$AAB_SRC" "$AAB_OUT"
+
+          echo "APK_PATH=${APK_OUT}" >> $GITHUB_OUTPUT
+          echo "AAB_PATH=${AAB_OUT}" >> $GITHUB_OUTPUT
+          ls -lh release-artifacts/
+
       - name: Upload Debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk-${{ steps.version.outputs.VERSION_SUFFIX }}-${{ steps.version.outputs.VERSION_NAME }}
+          name: app-debug-apk-${{ steps.version.outputs.VERSION_SUFFIX }}-${{ steps.version.outputs.FILE_VERSION }}
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
           if-no-files-found: error
@@ -191,8 +223,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk-${{ steps.version.outputs.VERSION_SUFFIX }}-${{ steps.version.outputs.VERSION_NAME }}
-          path: android/app/build/outputs/apk/release/*.apk
+          name: app-release-apk-${{ steps.version.outputs.VERSION_SUFFIX }}-${{ steps.version.outputs.FILE_VERSION }}
+          path: ${{ steps.artifacts.outputs.APK_PATH }}
           retention-days: 30
           if-no-files-found: error
 
@@ -200,34 +232,38 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab-${{ steps.version.outputs.VERSION_SUFFIX }}-${{ steps.version.outputs.VERSION_NAME }}
-          path: android/app/build/outputs/bundle/release/*.aab
+          name: app-release-aab-${{ steps.version.outputs.VERSION_SUFFIX }}-${{ steps.version.outputs.FILE_VERSION }}
+          path: ${{ steps.artifacts.outputs.AAB_PATH }}
           retention-days: 30
           if-no-files-found: error
 
-      - name: Create Release (on tag)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+      # Only on tag *push* — do not run on release.published (avoids permission/race with existing release)
+      - name: Create or update GitHub Release (tag push)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+            ${{ steps.artifacts.outputs.APK_PATH }}
+            ${{ steps.artifacts.outputs.AAB_PATH }}
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }} (${{ steps.version.outputs.VERSION_NAME }})
           draft: false
           prerelease: false
           generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload to Release (on release event)
+      # Attach versioned artifacts to an already-published release
+      - name: Upload artifacts to existing Release
         if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+            ${{ steps.artifacts.outputs.APK_PATH }}
+            ${{ steps.artifacts.outputs.AAB_PATH }}
+          tag_name: ${{ github.event.release.tag_name }}
           draft: false
-          generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
