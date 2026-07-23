@@ -56,9 +56,23 @@ Workflow: `.github/workflows/build-android.yml` builds debug APK, release APK, a
 3. Upload signed `app-release.aab` to Internal testing first
 4. Store listing: use texts and assets from [`store/play/LISTING.md`](../store/play/LISTING.md)
 5. Privacy policy URL (GitHub Pages): `https://wilkuuu.github.io/fog-of-war/` — bilingual EN/PL in `docs/index.html`. Enable Pages (Settings → Pages → Deploy from branch `main`, folder `/docs`)
-6. Complete Data safety, content rating, target audience, news app / COVID / Data safety forms
-7. Declare Photos/Videos access as user-selected, not shared
-8. Promote Internal → Closed → Production when ready
+6. Complete Data safety, content rating, target audience forms
+7. Declare Photos/Videos access as user-selected, not shared by developer
+8. **Ads**: App content → Ads = Yes. AdMob IDs live in GitHub Secrets (`ADMOB_APP_ID`, `ADMOB_BANNER_AD_UNIT_ID`) and are injected by CI; local defaults are in `monetization.config.ts`
+9. **Subscriptions**: Monetize → Subscriptions → create `fogofwar_adfree_monthly` and `fogofwar_adfree_yearly`; add license testers
+10. Promote Internal → Closed → Production when ready
+
+## Monetization (ads + subscriptions)
+
+| Piece | Location |
+|-------|----------|
+| Ad / product IDs | `src/app/services/monetization.config.ts` |
+| AdMob service | `src/app/services/ads.service.ts` |
+| Play Billing | `src/app/services/billing.service.ts` |
+| AdMob App ID meta-data | `android/app/src/main/AndroidManifest.xml` |
+| UI (subscribe / restore) | Home side menu |
+
+Default build uses **Google test ad units**. Subscriptions only work on a device/build linked to Play Console with published (or draft active) products.
 
 ## Versioning
 

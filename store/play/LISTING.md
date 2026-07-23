@@ -21,7 +21,7 @@ Upload at least 2 phone screenshots. Landscape is correct — the app is locked 
 Fog of War
 
 ### Short description (max 80)
-Reveal RPG videos with a fog-of-war brush — perfect for tabletop sessions.
+Reveal RPG videos with a fog-of-war brush. Optional ad-free subscription.
 
 ### Full description
 Fog of War helps game masters and RPG storytellers reveal video content gradually. Cover any local video with a dark fog, then wipe it away with your finger as the adventure unfolds.
@@ -33,12 +33,13 @@ Fog of War helps game masters and RPG storytellers reveal video content graduall
 • Undo the last stroke or Reset Fog to cover the map again
 • Open the in-session menu with a two-finger tap (or the subtle corner button)
 • Play in immersive landscape mode for TV/projector setups
+• Optional ad-free monthly or yearly subscription (removes ads)
 
 **Built for RPG sessions**
-Use battle-map walkthrough videos, animated maps, or prep clips. Keep surprises hidden until the right moment — no account, no cloud upload. Video stays on your device.
+Use battle-map walkthrough videos, animated maps, or prep clips. Keep surprises hidden until the right moment — no account required. Your videos stay on your device (ads/billing use Google services; videos are not uploaded to us).
 
 **Permissions**
-The app may request access to videos so you can choose a file from your gallery. Processing happens on-device. See the Privacy Policy for details.
+The app may request access to videos so you can choose a file from your gallery. Video processing happens on-device. See the Privacy Policy for ads and subscription details.
 
 ### App category
 Tools (or Entertainment)
@@ -54,7 +55,7 @@ RPG, fog of war, battle map, dungeon master, tabletop, video reveal, GM tools
 Mgła Wojny
 
 ### Krótki opis (max 80)
-Odkrywaj wideo RPG mgłą wojny — idealne na sesje papierowego RPG.
+Odkrywaj wideo RPG mgłą wojny. Opcjonalna subskrypcja bez reklam.
 
 ### Pełny opis
 Mgła Wojny pomaga mistrzom gry i narratorom RPG odkrywać treść wideo stopniowo. Nałóż ciemną mgłę na dowolne lokalne wideo, a potem zdejmuj ją palcem w miarę rozwoju przygody.
@@ -66,12 +67,13 @@ Mgła Wojny pomaga mistrzom gry i narratorom RPG odkrywać treść wideo stopnio
 • Cofnij ostatnie pociągnięcie lub zresetuj mgłę
 • Otwórz menu dwoma palcami (albo subtelnym przyciskiem w rogu)
 • Tryb immersyjny w poziomie — wygodny na TV i projektor
+• Opcjonalna subskrypcja miesięczna lub roczna bez reklam
 
 **Na sesje RPG**
-Sprawdzi się przy filmach z mapami bitewnymi, animowanymi planami lub materiałami przygotowawczymi. Zachowaj niespodzianki do właściwego momentu — bez konta i bez wysyłania wideo do chmury. Pliki zostają na Twoim urządzeniu.
+Sprawdzi się przy filmach z mapami bitewnymi, animowanymi planami lub materiałami przygotowawczymi. Zachowaj niespodzianki do właściwego momentu — bez własnego konta. Wideo zostaje na urządzeniu (reklamy/płatności obsługuje Google; plików do nas nie wysyłamy).
 
 **Uprawnienia**
-Aplikacja może poprosić o dostęp do wideo, abyś mógł wybrać plik z galerii. Przetwarzanie odbywa się lokalnie. Szczegóły w Polityce prywatności.
+Aplikacja może poprosić o dostęp do wideo, abyś mógł wybrać plik z galerii. Przetwarzanie wideo odbywa się lokalnie. Szczegóły reklam i subskrypcji w Polityce prywatności.
 
 ### Kategoria
 Narzędzia (lub Rozrywka)
@@ -81,11 +83,22 @@ Narzędzia (lub Rozrywka)
 ## Content rating & Data safety (notes)
 
 - **Content rating**: Everyone / PEGI 3 (no user-generated chat; depends on user videos — declare “Users can share user-generated content” only if applicable; typically No)
-- **Ads**: No
-- **In-app purchases**: No
+- **Ads**: Yes (AdMob banner on empty screen + interstitial on video load; removed by subscription)
+- **In-app purchases**: Yes — subscriptions `fogofwar_adfree_monthly` and `fogofwar_adfree_yearly`
 - **Data safety**:
-  - Photos and videos: Accessed (user-selected) — not collected / not shared
-  - App info & preferences (language/tutorial): stored on device only
-  - Data encrypted in transit: Not applicable (no account/backend)
-  - Users can request data deletion: Not applicable (no server data)
-- **Privacy policy URL**: host `store/play/privacy-policy.html` (or the bilingual markdown) on a public HTTPS page and paste the URL in Play Console
+  - Photos and videos: Accessed (user-selected) — not collected / not shared by the developer
+  - Device / advertising ID: collected/shared by Google AdMob (declare Ads = Yes)
+  - Purchase history: handled by Google Play Billing
+  - App info & preferences (language/tutorial/ad-free cache): stored on device
+  - Data encrypted in transit: Yes for Google ads/billing traffic
+- **Privacy policy URL**: `https://wilkuuu.github.io/fog-of-war/` (source: `docs/index.html`)
+
+## Play Console — Ads & subscriptions setup
+
+1. **Monetize with AdMob** (or link existing AdMob app) → replace test IDs in `src/app/services/monetization.config.ts` and `AndroidManifest` `APPLICATION_ID`
+2. **Monetize → Products → Subscriptions** create:
+   - `fogofwar_adfree_monthly`
+   - `fogofwar_adfree_yearly`
+3. **App content → Ads**: declare that the app contains ads
+4. **App content → Data safety**: mark Advertising ID / Device IDs as collected by AdMob; Purchases via Google Play
+5. Activate products, then test on a license-tester account with a signed build from Play (Internal testing)

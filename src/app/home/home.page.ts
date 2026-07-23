@@ -1,8 +1,11 @@
 import { Component, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { MenuController, AlertController, ModalController } from '@ionic/angular';
+import { MenuController, AlertController, ModalController, ToastController } from '@ionic/angular';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { Subscription } from 'rxjs';
 import { TranslationService } from '../services/translation.service';
+import { AdsService } from '../services/ads.service';
+import { BillingService } from '../services/billing.service';
 import { TutorialComponent } from '../components/tutorial/tutorial.component';
 import { LanguageSelectorComponent } from '../components/language-selector/language-selector.component';
 
@@ -24,6 +27,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
 
   videoZoom: number = 1.0;
   videoRotation: number = 0;
+  showBannerSlot = false;
 
   private ctx: CanvasRenderingContext2D | null = null;
   private video: HTMLVideoElement | null = null;
@@ -38,12 +42,17 @@ export class HomePage implements AfterViewInit, OnDestroy {
   private animationFrameId: number | null = null;
   private displayWidth: number = 0;
   private displayHeight: number = 0;
+  private adFreeSub?: Subscription;
+  private bannerSub?: Subscription;
 
   constructor(
     private menuController: MenuController,
     private alertController: AlertController,
     private modalController: ModalController,
-    public translation: TranslationService
+    private toastController: ToastController,
+    public translation: TranslationService,
+    private ads: AdsService,
+    public billing: BillingService
   ) {}
 
   closeMenu() {
@@ -58,13 +67,31 @@ export class HomePage implements AfterViewInit, OnDestroy {
     this.setupBackButtonHandler();
     this.enableFullScreen();
     this.checkAndShowTutorial();
-    setTimeout(() => {
+    this.showBannerSlot = !this.billing.isAdFree;
+    this.adFreeSub = this.billing.adFree$.subscribe(async (adFree) => {
+      this.showBannerSlot = !adFree && !this.videoUrl;
+      if (adFree) {
+        await this.ads.removeBanner();
+      } else if (!this.videoUrl) {
+        await this.ads.showBannerIfAllowed();
+      }
+    });
+    this.bannerSub = this.ads.bannerActive$.subscribe((active) => {
+      if (!this.billing.isAdFree && !this.videoUrl) {
+        this.showBannerSlot = active || !Capacitor.isNativePlatform();
+      }
+    });
+    setTimeout(async () => {
       if (this.videoElement?.nativeElement) {
         this.video = this.videoElement.nativeElement;
       }
       if (this.canvasElement?.nativeElement) {
         this.canvas = this.canvasElement.nativeElement;
         this.ctx = this.canvas.getContext('2d');
+      }
+      if (!this.videoUrl && !this.billing.isAdFree) {
+        this.showBannerSlot = true;
+        await this.ads.showBannerIfAllowed();
       }
     }, 100);
   }
@@ -157,6 +184,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.adFreeSub?.unsubscribe();
+    this.bannerSub?.unsubscribe();
     if (this.backButtonListener) {
       this.backButtonListener.remove();
     }
@@ -167,11 +196,56 @@ export class HomePage implements AfterViewInit, OnDestroy {
     if (this.videoUrl) {
       URL.revokeObjectURL(this.videoUrl);
     }
+    this.ads.removeBanner();
   }
 
   async selectVideo() {
     await this.menuController.close('main-menu');
     this.pickVideoFromGallery();
+  }
+
+  async subscribeMonthly() {
+    const ok = await this.billing.purchaseMonthly();
+    await this.showPremiumToast(ok);
+    if (ok) {
+      await this.ads.removeBanner();
+      this.closeMenu();
+    }
+  }
+
+  async subscribeYearly() {
+    const ok = await this.billing.purchaseYearly();
+    await this.showPremiumToast(ok);
+    if (ok) {
+      await this.ads.removeBanner();
+      this.closeMenu();
+    }
+  }
+
+  async restorePurchases() {
+    const ok = await this.billing.restore();
+    const toast = await this.toastController.create({
+      message: ok
+        ? this.translation.t('premium.restoreOk')
+        : this.translation.t('premium.restoreEmpty'),
+      duration: 2500,
+      position: 'bottom'
+    });
+    await toast.present();
+    if (ok) {
+      await this.ads.removeBanner();
+    }
+  }
+
+  private async showPremiumToast(ok: boolean) {
+    const toast = await this.toastController.create({
+      message: ok
+        ? this.translation.t('premium.purchaseOk')
+        : this.translation.t('premium.purchaseFail'),
+      duration: 2500,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 
   pickVideoFromGallery() {
@@ -189,6 +263,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
         }
         this.videoUrl = URL.createObjectURL(file);
         document.body.removeChild(input);
+        this.showBannerSlot = false;
+        await this.ads.hideBanner();
 
         const alert = await this.alertController.create({
           header: this.translation.t('alert.addFog'),
@@ -201,6 +277,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
               handler: () => {
                 this.hasFog = false;
                 this.loadVideo();
+                this.ads.showInterstitialIfAllowed();
               }
             },
             {
@@ -209,6 +286,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
               handler: () => {
                 this.hasFog = true;
                 this.loadVideo();
+                this.ads.showInterstitialIfAllowed();
               }
             }
           ]
