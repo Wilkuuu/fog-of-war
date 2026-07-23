@@ -50,9 +50,7 @@
     <!-- Play Billing -->
     <uses-permission android:name="com.android.vending.BILLING" />
 
-    <!-- Video selection uses the system file picker (Storage Access Framework).
-         These permissions remain for older Android WebView / gallery fallbacks. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+    <!-- Video selection uses the system file picker (HTML input / SAF).
+         Do not declare READ_MEDIA_VIDEO or READ_MEDIA_IMAGES — Play policy
+         requires the photo/video picker instead of broad media permissions. -->
 </manifest>
