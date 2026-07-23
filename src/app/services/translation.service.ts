@@ -26,6 +26,17 @@ export class TranslationService {
       'menu.actions': 'Actions',
       'menu.settings': 'Settings',
       'menu.language': 'Language',
+      'menu.premium': 'Premium',
+
+      'premium.hint': 'Remove ads with a subscription',
+      'premium.monthly': 'Ad-free monthly',
+      'premium.yearly': 'Ad-free yearly',
+      'premium.restore': 'Restore purchases',
+      'premium.active': 'Ad-free subscription active',
+      'premium.purchaseOk': 'Thanks! Ads are now disabled.',
+      'premium.purchaseFail': 'Purchase unavailable. Check Play Console products / network.',
+      'premium.restoreOk': 'Purchases restored — ads disabled.',
+      'premium.restoreEmpty': 'No active subscription found.',
       
       // Actions
       'action.revealAll': 'Reveal All',
@@ -78,6 +89,17 @@ export class TranslationService {
       'menu.actions': 'Acciones',
       'menu.settings': 'Configuración',
       'menu.language': 'Idioma',
+      'menu.premium': 'Premium',
+
+      'premium.hint': 'Elimina los anuncios con una suscripción',
+      'premium.monthly': 'Sin anuncios (mensual)',
+      'premium.yearly': 'Sin anuncios (anual)',
+      'premium.restore': 'Restaurar compras',
+      'premium.active': 'Suscripción sin anuncios activa',
+      'premium.purchaseOk': '¡Gracias! Los anuncios están desactivados.',
+      'premium.purchaseFail': 'Compra no disponible. Revisa productos de Play Console / red.',
+      'premium.restoreOk': 'Compras restauradas — anuncios desactivados.',
+      'premium.restoreEmpty': 'No se encontró una suscripción activa.',
       
       // Actions
       'action.revealAll': 'Revelar Todo',
@@ -130,6 +152,17 @@ export class TranslationService {
       'menu.actions': 'Akcje',
       'menu.settings': 'Ustawienia',
       'menu.language': 'Język',
+      'menu.premium': 'Premium',
+
+      'premium.hint': 'Usuń reklamy dzięki subskrypcji',
+      'premium.monthly': 'Bez reklam (miesięcznie)',
+      'premium.yearly': 'Bez reklam (rocznie)',
+      'premium.restore': 'Przywróć zakupy',
+      'premium.active': 'Subskrypcja bez reklam aktywna',
+      'premium.purchaseOk': 'Dzięki! Reklamy są wyłączone.',
+      'premium.purchaseFail': 'Zakup niedostępny. Sprawdź produkty w Play Console / sieć.',
+      'premium.restoreOk': 'Zakupy przywrócone — reklamy wyłączone.',
+      'premium.restoreEmpty': 'Nie znaleziono aktywnej subskrypcji.',
       
       // Actions
       'action.revealAll': 'Odkryj Wszystko',

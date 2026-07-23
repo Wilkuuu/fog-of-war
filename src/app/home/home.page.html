@@ -72,13 +72,36 @@
           {{ translation.t('menu.language') }}
         </ion-button>
       </div>
+
+      <!-- Premium / Ad-free -->
+      <div class="menu-section">
+        <h3 class="section-title">{{ translation.t('menu.premium') }}</h3>
+        <p class="premium-status" *ngIf="billing.isAdFree">{{ translation.t('premium.active') }}</p>
+        <ng-container *ngIf="!billing.isAdFree">
+          <p class="premium-hint">{{ translation.t('premium.hint') }}</p>
+          <ion-button class="menu-action-button primary" expand="block" fill="solid" (click)="subscribeMonthly()">
+            <ion-icon name="sparkles-outline" slot="start"></ion-icon>
+            {{ translation.t('premium.monthly') }}
+            <span *ngIf="billing.monthlyPriceLabel !== '…'"> ({{ billing.monthlyPriceLabel }})</span>
+          </ion-button>
+          <ion-button class="menu-action-button" expand="block" fill="outline" (click)="subscribeYearly()">
+            <ion-icon name="calendar-outline" slot="start"></ion-icon>
+            {{ translation.t('premium.yearly') }}
+            <span *ngIf="billing.yearlyPriceLabel !== '…'"> ({{ billing.yearlyPriceLabel }})</span>
+          </ion-button>
+        </ng-container>
+        <ion-button class="menu-action-button" expand="block" fill="clear" (click)="restorePurchases()">
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>
+          {{ translation.t('premium.restore') }}
+        </ion-button>
+      </div>
     </div>
   </ion-content>
 </ion-menu>
 
 <div class="ion-page" [id]="contentId" style="height: 100vh; display: flex; flex-direction: column;">
   <ion-content [fullscreen]="true" class="video-content" style="flex: 1; min-height: 0;">
-    <div *ngIf="!videoUrl" class="empty-state">
+    <div *ngIf="!videoUrl" class="empty-state" [class.empty-state--with-banner]="showBannerSlot">
       <div class="empty-state-content">
         <h1 class="empty-state-title">{{ translation.t('app.title') }}</h1>
         <p class="empty-state-description">{{ translation.t('empty.selectVideo') }}</p>
@@ -87,6 +110,8 @@
           {{ translation.t('empty.selectVideoButton') }}
         </ion-button>
       </div>
+      <!-- Reserved space for AdMob adaptive banner (native overlay at bottom) -->
+      <div class="ad-banner-slot" *ngIf="showBannerSlot" aria-hidden="true"></div>
     </div>
 
     <div *ngIf="videoUrl" class="video-container" (touchstart)="onContainerTouch($event)" (touchend)="onContainerTouchEnd($event)">

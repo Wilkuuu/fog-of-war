@@ -103,20 +103,24 @@
       <p>Fog of War lets you select a video from your device and optionally cover it with a “fog of war” overlay that you reveal by touch. It is intended for RPG / tabletop sessions and similar use.</p>
 
       <h2>Data we collect</h2>
-      <p>We do <strong>not</strong> collect, upload, or sell personal data.</p>
+      <p>We do <strong>not</strong> sell personal data. Selected videos are <strong>not</strong> uploaded to our servers.</p>
       <ul>
-        <li><strong>Videos you select</strong> are read locally so the app can play them and draw the fog overlay. They are <strong>not</strong> uploaded to our servers. We do not operate a backend that receives your videos.</li>
-        <li><strong>Local preferences</strong> (for example language or tutorial flags) may be stored on your device. This data stays on the device.</li>
-        <li>The app does <strong>not</strong> use advertising SDKs, analytics SDKs, crash reporters that send personal data, or account login.</li>
+        <li><strong>Videos you select</strong> are read locally so the app can play them and draw the fog overlay.</li>
+        <li><strong>Local preferences</strong> (language, tutorial, ad-free entitlement cache) may be stored on your device.</li>
+        <li><strong>Advertising (AdMob / Google)</strong> — the free version may show ads. Google’s advertising SDK may process device identifiers (including Advertising ID), coarse location/IP, and interaction data under Google’s policies. You can remove ads with a subscription.</li>
+        <li><strong>Subscriptions (Google Play Billing)</strong> — purchases are processed by Google Play. We receive entitlement status (whether you have an active ad-free subscription), not your full payment card details.</li>
+        <li>The app has <strong>no</strong> account login of its own.</li>
       </ul>
 
       <h2>Permissions</h2>
       <p>Depending on Android version and WebView behavior, the app may declare:</p>
       <ul>
-        <li><strong>Internet</strong> — required by the Capacitor WebView shell; the app does not send your selected videos over the network.</li>
-        <li><strong>Read videos / read external storage (legacy)</strong> — to allow choosing a video from your gallery when the system file picker or WebView requires it.</li>
+        <li><strong>Internet / network state</strong> — WebView, AdMob ads, and Play Billing.</li>
+        <li><strong>Advertising ID (AD_ID)</strong> — used by AdMob for ads.</li>
+        <li><strong>Billing</strong> — Google Play subscriptions.</li>
+        <li><strong>Read videos / read external storage (legacy)</strong> — to allow choosing a video from your gallery when required.</li>
       </ul>
-      <p>You choose which video to open. You can deny storage/media permission; then video selection may not work.</p>
+      <p>You choose which video to open. You can deny storage/media permission; then video selection may not work. Ads require network access.</p>
 
       <h2>Children</h2>
       <p>The app is not directed at children under 13. It does not knowingly collect children’s data.</p>
@@ -133,20 +137,24 @@
       <p>Mgła Wojny pozwala wybrać wideo z urządzenia i opcjonalnie przykryć je „mgłą wojny”, którą odkrywasz dotykiem. Aplikacja jest przeznaczona m.in. do sesji RPG.</p>
 
       <h2>Jakie dane zbieramy</h2>
-      <p><strong>Nie</strong> zbieramy, nie wysyłamy i nie sprzedajemy danych osobowych.</p>
+      <p><strong>Nie</strong> sprzedajemy danych osobowych. Wybrane wideo <strong>nie</strong> jest wysyłane na nasze serwery.</p>
       <ul>
-        <li><strong>Wybrane wideo</strong> jest odczytywane lokalnie w celu odtworzenia i narysowania mgły. <strong>Nie</strong> jest przesyłane na nasze serwery. Nie prowadzimy backendu, który przyjmuje Twoje pliki wideo.</li>
-        <li><strong>Preferencje lokalne</strong> (np. język, flaga samouczka) mogą być zapisane na urządzeniu. Te dane pozostają na urządzeniu.</li>
-        <li>Aplikacja <strong>nie</strong> używa SDK reklamowych, analitycznych ani logowania konta.</li>
+        <li><strong>Wybrane wideo</strong> jest odczytywane lokalnie w celu odtworzenia i narysowania mgły.</li>
+        <li><strong>Preferencje lokalne</strong> (język, samouczek, cache statusu „bez reklam”) mogą być zapisane na urządzeniu.</li>
+        <li><strong>Reklamy (AdMob / Google)</strong> — wersja darmowa może wyświetlać reklamy. SDK reklamowe Google może przetwarzać identyfikatory urządzenia (w tym Advertising ID), przybliżoną lokalizację/IP oraz dane o interakcji zgodnie z politykami Google. Reklamy usuwa subskrypcja.</li>
+        <li><strong>Subskrypcje (Google Play Billing)</strong> — zakupy obsługuje Google Play. Otrzymujemy status uprawnienia (aktywna subskrypcja bez reklam), a nie pełne dane karty płatniczej.</li>
+        <li>Aplikacja <strong>nie</strong> ma własnego logowania konta.</li>
       </ul>
 
       <h2>Uprawnienia</h2>
       <p>W zależności od wersji Androida aplikacja może deklarować:</p>
       <ul>
-        <li><strong>Internet</strong> — wymagane przez powłokę WebView Capacitor; aplikacja nie wysyła wybranych wideo przez sieć.</li>
-        <li><strong>Odczyt wideo / pamięci (starsze wersje)</strong> — aby umożliwić wybór pliku z galerii, gdy wymaga tego systemowy selektor lub WebView.</li>
+        <li><strong>Internet / stan sieci</strong> — WebView, reklamy AdMob i Play Billing.</li>
+        <li><strong>Advertising ID (AD_ID)</strong> — używane przez AdMob.</li>
+        <li><strong>Billing</strong> — subskrypcje Google Play.</li>
+        <li><strong>Odczyt wideo / pamięci (starsze wersje)</strong> — wybór pliku z galerii, gdy jest wymagany.</li>
       </ul>
-      <p>Sam wybierasz plik. Odmowa uprawnień może uniemożliwić wybór wideo.</p>
+      <p>Sam wybierasz plik. Odmowa uprawnień może uniemożliwić wybór wideo. Reklamy wymagają dostępu do sieci.</p>
 
       <h2>Dzieci</h2>
       <p>Aplikacja nie jest skierowana do dzieci poniżej 13. roku życia i świadomie nie zbiera ich danych.</p>
