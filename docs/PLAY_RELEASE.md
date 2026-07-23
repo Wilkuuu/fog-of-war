@@ -36,7 +36,15 @@ Output:
 
 - `android/app/build/outputs/bundle/release/app-release.aab`
 
-Without `keystore.properties`, Gradle still produces an AAB/APK but it is **unsigned** (or debug-signed). Play Console requires an app signed with your upload key (or Play App Signing).
+Without `keystore.properties`, Gradle still produces an AAB/APK but it is **unsigned**. Play Console requires a signed AAB.
+
+Local signing files (gitignored):
+- `android/upload-keystore.jks`
+- `android/keystore.properties`
+
+CI uses GitHub Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+
+**Backup the keystore offline.** Losing it means you cannot update the app on Play (unless using Play App Signing with a recoverable upload key).
 
 ## CI secrets (optional)
 
