@@ -83,14 +83,32 @@ jobs:
           text = re.sub(r"useTestAds:\s*true", "useTestAds: false", text, count=1)
           cfg.write_text(text)
 
+          strings = pathlib.Path("android/app/src/main/res/values/strings.xml")
+          s = strings.read_text()
+          if "admob_app_id" in s:
+              s = re.sub(
+                  r'(<string name="admob_app_id">)[^<]*(</string>)',
+                  rf"\1{app_id}\2",
+                  s,
+                  count=1,
+              )
+          else:
+              s = s.replace(
+                  "</resources>",
+                  f'    <string name="admob_app_id">{app_id}</string>\n</resources>',
+              )
+          strings.write_text(s)
+
           manifest = pathlib.Path("android/app/src/main/AndroidManifest.xml")
           m = manifest.read_text()
-          m = re.sub(
-              r'(android:name="com\.google\.android\.gms\.ads\.APPLICATION_ID"\s*\n\s*android:value=")[^"]*(")',
-              rf"\1{app_id}\2",
-              m,
-          )
-          manifest.write_text(m)
+          # Prefer @string/admob_app_id; keep literal value rewrite as fallback
+          if '@string/admob_app_id' not in m:
+              m = re.sub(
+                  r'(android:name="com\.google\.android\.gms\.ads\.APPLICATION_ID"\s*\n\s*android:value=")[^"]*(")',
+                  rf"\1{app_id}\2",
+                  m,
+              )
+              manifest.write_text(m)
           print("Injected ADMOB_APP_ID and ADMOB_BANNER_AD_UNIT_ID")
           PY
 

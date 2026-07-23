@@ -48,7 +48,10 @@ export class AdsService {
 
     this.initPromise = (async () => {
       try {
-        await AdMob.initialize();
+        // Google Mobile Ads SDK init (App ID from AndroidManifest / admob_app_id)
+        await AdMob.initialize({
+          initializeForTesting: MonetizationConfig.useTestAds
+        });
 
         AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
           this.bannerVisible = true;
@@ -58,6 +61,7 @@ export class AdsService {
           this.bannerActiveSubject.next(true);
         });
 
+        // UMP consent (EEA / UK) before loading ads — AdMob policy
         const consentInfo = await AdMob.requestConsentInfo();
         if (
           consentInfo.isConsentFormAvailable &&
@@ -134,7 +138,7 @@ export class AdsService {
 
   async showInterstitialIfAllowed(): Promise<void> {
     await this.initialize();
-    if (!this.canShowAds()) {
+    if (!this.canShowAds() || !interstitialAdUnitId()) {
       return;
     }
 
@@ -155,6 +159,7 @@ export class AdsService {
   }
 
   private async showBannerNow(): Promise<void> {
+    // Banner guide: adaptive size, bottom anchor, production unit baner_fot_of_war
     const options: BannerAdOptions = {
       adId: bannerAdUnitId(),
       adSize: BannerAdSize.ADAPTIVE_BANNER,
@@ -173,11 +178,12 @@ export class AdsService {
   }
 
   private async prepareInterstitial(): Promise<void> {
-    if (!Capacitor.isNativePlatform() || this.billing.isAdFree) {
+    const adId = interstitialAdUnitId();
+    if (!Capacitor.isNativePlatform() || this.billing.isAdFree || !adId) {
       return;
     }
     const options: AdOptions = {
-      adId: interstitialAdUnitId(),
+      adId,
       isTesting: MonetizationConfig.useTestAds
     };
     try {
