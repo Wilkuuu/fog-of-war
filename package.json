@@ -15,6 +15,7 @@
     "ionic:serve": "ng serve",
     "android:build": "cd android && ./gradlew assembleDebug",
     "android:build:release": "cd android && ./gradlew assembleRelease",
+    "android:bundle:release": "cd android && ./gradlew bundleRelease",
     "cap:sync": "npx cap sync",
     "cap:add:android": "npx cap add android"
   },
