@@ -37,12 +37,12 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
+    <!-- Capacitor WebView; app does not send user video content over the network -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Read videos from gallery (Android 13+) -->
+    <!-- Video selection uses the system file picker (Storage Access Framework).
+         These permissions remain for older Android WebView / gallery fallbacks. -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <!-- Read external storage for older Android versions (< 13) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 </manifest>

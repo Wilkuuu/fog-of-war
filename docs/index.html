@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Privacy Policy / Polityka prywatności — Fog of War / Mgła Wojny" />
+  <title>Privacy Policy — Fog of War / Mgła Wojny</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1419;
+      --fg: #e8eef4;
+      --muted: #9aabba;
+      --line: #2a3540;
+      --accent: #6eb6ff;
+      --chip: #1a2330;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f9fb;
+        --fg: #15202b;
+        --muted: #5b6b7a;
+        --line: #d5dee6;
+        --accent: #0b6bcb;
+        --chip: #e8eef4;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    .wrap { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { font-size: 1.55rem; line-height: 1.25; margin: 0 0 0.35rem; }
+    .meta { color: var(--muted); font-size: 0.92rem; margin: 0; }
+    .lang {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--chip);
+      flex-shrink: 0;
+    }
+    .lang button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      cursor: pointer;
+    }
+    .lang button[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+    }
+    h2 { font-size: 1.15rem; margin: 1.6rem 0 0.55rem; }
+    ul { padding-left: 1.2rem; }
+    li { margin: 0.35rem 0; }
+    a { color: var(--accent); }
+    .hidden { display: none; }
+    code {
+      font-size: 0.92em;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      background: var(--chip);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1 data-i18n="title">Privacy Policy — Fog of War</h1>
+        <p class="meta">
+          <span data-i18n="updated">Last updated: 2026-07-23</span><br />
+          <span data-i18n="app">App: Fog of War (<code>com.fogofwar.app</code>)</span><br />
+          <span data-i18n="contact-meta">Contact: <a href="mailto:rpg.scenario.app@gmail.com">rpg.scenario.app@gmail.com</a></span>
+        </p>
+      </div>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" id="btn-en" aria-pressed="true">EN</button>
+        <button type="button" id="btn-pl" aria-pressed="false">PL</button>
+      </div>
+    </header>
+
+    <article id="lang-en">
+      <h2>What the app does</h2>
+      <p>Fog of War lets you select a video from your device and optionally cover it with a “fog of war” overlay that you reveal by touch. It is intended for RPG / tabletop sessions and similar use.</p>
+
+      <h2>Data we collect</h2>
+      <p>We do <strong>not</strong> collect, upload, or sell personal data.</p>
+      <ul>
+        <li><strong>Videos you select</strong> are read locally so the app can play them and draw the fog overlay. They are <strong>not</strong> uploaded to our servers. We do not operate a backend that receives your videos.</li>
+        <li><strong>Local preferences</strong> (for example language or tutorial flags) may be stored on your device. This data stays on the device.</li>
+        <li>The app does <strong>not</strong> use advertising SDKs, analytics SDKs, crash reporters that send personal data, or account login.</li>
+      </ul>
+
+      <h2>Permissions</h2>
+      <p>Depending on Android version and WebView behavior, the app may declare:</p>
+      <ul>
+        <li><strong>Internet</strong> — required by the Capacitor WebView shell; the app does not send your selected videos over the network.</li>
+        <li><strong>Read videos / read external storage (legacy)</strong> — to allow choosing a video from your gallery when the system file picker or WebView requires it.</li>
+      </ul>
+      <p>You choose which video to open. You can deny storage/media permission; then video selection may not work.</p>
+
+      <h2>Children</h2>
+      <p>The app is not directed at children under 13. It does not knowingly collect children’s data.</p>
+
+      <h2>Changes</h2>
+      <p>We may update this policy. The “Last updated” date will change when we do. Continued use after changes means you accept the updated policy.</p>
+
+      <h2>Contact</h2>
+      <p>Privacy questions: <a href="mailto:rpg.scenario.app@gmail.com">rpg.scenario.app@gmail.com</a></p>
+    </article>
+
+    <article id="lang-pl" class="hidden" lang="pl">
+      <h2>Do czego służy aplikacja</h2>
+      <p>Mgła Wojny pozwala wybrać wideo z urządzenia i opcjonalnie przykryć je „mgłą wojny”, którą odkrywasz dotykiem. Aplikacja jest przeznaczona m.in. do sesji RPG.</p>
+
+      <h2>Jakie dane zbieramy</h2>
+      <p><strong>Nie</strong> zbieramy, nie wysyłamy i nie sprzedajemy danych osobowych.</p>
+      <ul>
+        <li><strong>Wybrane wideo</strong> jest odczytywane lokalnie w celu odtworzenia i narysowania mgły. <strong>Nie</strong> jest przesyłane na nasze serwery. Nie prowadzimy backendu, który przyjmuje Twoje pliki wideo.</li>
+        <li><strong>Preferencje lokalne</strong> (np. język, flaga samouczka) mogą być zapisane na urządzeniu. Te dane pozostają na urządzeniu.</li>
+        <li>Aplikacja <strong>nie</strong> używa SDK reklamowych, analitycznych ani logowania konta.</li>
+      </ul>
+
+      <h2>Uprawnienia</h2>
+      <p>W zależności od wersji Androida aplikacja może deklarować:</p>
+      <ul>
+        <li><strong>Internet</strong> — wymagane przez powłokę WebView Capacitor; aplikacja nie wysyła wybranych wideo przez sieć.</li>
+        <li><strong>Odczyt wideo / pamięci (starsze wersje)</strong> — aby umożliwić wybór pliku z galerii, gdy wymaga tego systemowy selektor lub WebView.</li>
+      </ul>
+      <p>Sam wybierasz plik. Odmowa uprawnień może uniemożliwić wybór wideo.</p>
+
+      <h2>Dzieci</h2>
+      <p>Aplikacja nie jest skierowana do dzieci poniżej 13. roku życia i świadomie nie zbiera ich danych.</p>
+
+      <h2>Zmiany</h2>
+      <p>Polityka może być aktualizowana. Data „Ostatnia aktualizacja” zostanie zmieniona. Dalsze korzystanie oznacza akceptację zaktualizowanej polityki.</p>
+
+      <h2>Kontakt</h2>
+      <p>Pytania o prywatność: <a href="mailto:rpg.scenario.app@gmail.com">rpg.scenario.app@gmail.com</a></p>
+    </article>
+  </div>
+
+  <script>
+    (function () {
+      var titles = {
+        en: "Privacy Policy — Fog of War",
+        pl: "Polityka prywatności — Mgła Wojny"
+      };
+      var updated = {
+        en: "Last updated: 2026-07-23",
+        pl: "Ostatnia aktualizacja: 2026-07-23"
+      };
+      var app = {
+        en: 'App: Fog of War (<code>com.fogofwar.app</code>)',
+        pl: 'Aplikacja: Mgła Wojny (<code>com.fogofwar.app</code>)'
+      };
+      var contactMeta = {
+        en: 'Contact: <a href="mailto:rpg.scenario.app@gmail.com">rpg.scenario.app@gmail.com</a>',
+        pl: 'Kontakt: <a href="mailto:rpg.scenario.app@gmail.com">rpg.scenario.app@gmail.com</a>'
+      };
+
+      function detect() {
+        var q = new URLSearchParams(location.search).get("lang");
+        if (q === "pl" || q === "en") return q;
+        var nav = (navigator.language || "en").toLowerCase();
+        return nav.startsWith("pl") ? "pl" : "en";
+      }
+
+      function setLang(lang) {
+        var en = document.getElementById("lang-en");
+        var pl = document.getElementById("lang-pl");
+        var isPl = lang === "pl";
+        en.classList.toggle("hidden", isPl);
+        pl.classList.toggle("hidden", !isPl);
+        document.documentElement.lang = lang;
+        document.title = titles[lang];
+        document.querySelector('[data-i18n="title"]').textContent = titles[lang];
+        document.querySelector('[data-i18n="updated"]').textContent = updated[lang];
+        document.querySelector('[data-i18n="app"]').innerHTML = app[lang];
+        document.querySelector('[data-i18n="contact-meta"]').innerHTML = contactMeta[lang];
+        document.getElementById("btn-en").setAttribute("aria-pressed", String(!isPl));
+        document.getElementById("btn-pl").setAttribute("aria-pressed", String(isPl));
+        var url = new URL(location.href);
+        url.searchParams.set("lang", lang);
+        history.replaceState(null, "", url);
+      }
+
+      document.getElementById("btn-en").addEventListener("click", function () { setLang("en"); });
+      document.getElementById("btn-pl").addEventListener("click", function () { setLang("pl"); });
+      setLang(detect());
+    })();
+  </script>
+</body>
+</html>

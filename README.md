@@ -62,12 +62,12 @@ npm start
 
 1. Build the web app:
 ```bash
-npm run build
+npm run build:prod
 ```
 
 2. Sync with Capacitor:
 ```bash
-npx cap sync
+npx cap sync android
 ```
 
 3. Open in Android Studio:
@@ -76,6 +76,17 @@ npx cap open android
 ```
 
 4. Build and run from Android Studio
+
+### Release AAB (Google Play)
+
+Requires Java 17 and an upload keystore. Full steps: [docs/PLAY_RELEASE.md](docs/PLAY_RELEASE.md)
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+npm run build:prod && npx cap sync android && npm run android:bundle:release
+```
+
+Store listing copy (PL/EN), screenshots, icon, and privacy policy drafts: [store/play/](store/play/)
 
 ## Usage
 
@@ -106,10 +117,11 @@ npx cap open android
 ## Permissions
 
 The app requires the following Android permissions:
-- `READ_EXTERNAL_STORAGE` - To read videos from device
+- `READ_EXTERNAL_STORAGE` - To read videos from device (Android 12 and older)
 - `READ_MEDIA_VIDEO` - To access video files (Android 13+)
+- `INTERNET` - Required by the Capacitor WebView shell (selected videos are not uploaded)
 
-These are configured in `capacitor.config.ts`. Permissions are requested automatically when selecting a video.
+Video selection uses the system file picker when possible. Permissions are requested by the OS when needed.
 
 ## App Configuration
 
@@ -117,4 +129,6 @@ These are configured in `capacitor.config.ts`. Permissions are requested automat
 - **Full Screen**: Immersive full-screen mode (hides status and navigation bars)
 - **Background**: Pure black (#000000) throughout the app
 - **Menu Access**: Two-finger tap gesture (menu button is barely visible as fallback)
+- **Application ID**: `com.fogofwar.app`
+- **targetSdk**: 35 (Google Play requirement)
 

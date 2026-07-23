@@ -6,17 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https'
-  },
-  plugins: {
-    Filesystem: {
-      androidPermissions: [
-        'READ_EXTERNAL_STORAGE',
-        'WRITE_EXTERNAL_STORAGE',
-        'READ_MEDIA_VIDEO'
-      ]
-    }
   }
 };
 
 export default config;
-
