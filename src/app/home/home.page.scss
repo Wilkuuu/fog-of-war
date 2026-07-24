@@ -14,17 +14,20 @@
 
 .empty-state {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   flex: 1;
   min-height: 0;
   padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   position: relative;
   overflow: hidden;
 
   &--with-banner {
-    padding-bottom: 72px;
+    // Adaptive banners are often > 60px; keep CTA clear of the native overlay.
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
   }
   
   // Animated background pattern
@@ -56,7 +59,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 60px;
+  height: calc(100px + env(safe-area-inset-bottom, 0px));
   z-index: 2;
   pointer-events: none;
   background: transparent;
@@ -309,6 +312,7 @@
 
 .menu-sections {
   padding: 16px 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
 .menu-section {
@@ -316,6 +320,7 @@
   
   &:last-child {
     margin-bottom: 0;
+    padding-bottom: 8px;
   }
 }
 

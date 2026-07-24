@@ -55,12 +55,23 @@ export class HomePage implements AfterViewInit, OnDestroy {
     public billing: BillingService
   ) {}
 
-  closeMenu() {
-    this.menuController.close('main-menu');
+  async closeMenu() {
+    await this.menuController.close('main-menu');
   }
 
   async openMenu() {
     await this.menuController.open('main-menu');
+  }
+
+  /** Native AdMob banner sits above the WebView and steals taps on Premium. */
+  async onMenuDidOpen() {
+    await this.ads.hideBanner();
+  }
+
+  async onMenuDidClose() {
+    if (!this.videoUrl && !this.billing.isAdFree) {
+      await this.ads.showBannerIfAllowed();
+    }
   }
 
   ngAfterViewInit() {
@@ -206,10 +217,13 @@ export class HomePage implements AfterViewInit, OnDestroy {
 
   async subscribeMonthly() {
     const ok = await this.billing.purchaseMonthly();
+    if (this.billing.purchaseError === 'cancelled') {
+      return;
+    }
     await this.showPremiumToast(ok);
     if (ok) {
       await this.ads.removeBanner();
-      this.closeMenu();
+      await this.closeMenu();
     }
   }
 
@@ -220,7 +234,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
         ? this.translation.t('premium.restoreOk')
         : this.translation.t('premium.restoreEmpty'),
       duration: 2500,
-      position: 'bottom'
+      position: 'bottom',
+      cssClass: 'premium-toast'
     });
     await toast.present();
     if (ok) {
@@ -233,8 +248,9 @@ export class HomePage implements AfterViewInit, OnDestroy {
       message: ok
         ? this.translation.t('premium.purchaseOk')
         : this.translation.t('premium.purchaseFail'),
-      duration: 2500,
-      position: 'bottom'
+      duration: 2800,
+      position: 'middle',
+      cssClass: 'premium-toast'
     });
     await toast.present();
   }

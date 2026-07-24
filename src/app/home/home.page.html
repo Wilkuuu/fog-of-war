@@ -1,4 +1,10 @@
-<ion-menu side="start" menuId="main-menu" [contentId]="contentId" class="custom-menu">
+<ion-menu
+  side="start"
+  menuId="main-menu"
+  [contentId]="contentId"
+  class="custom-menu"
+  (ionDidOpen)="onMenuDidOpen()"
+  (ionDidClose)="onMenuDidClose()">
   <ion-content class="menu-content">
     <div class="menu-header">
       <h2 class="menu-title">{{ translation.t('app.title') }}</h2>
