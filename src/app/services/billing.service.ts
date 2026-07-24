@@ -31,12 +31,6 @@ export class BillingService {
     );
   }
 
-  get yearlyPriceLabel(): string {
-    return (
-      this.priceLabels[MonetizationConfig.subscriptions.adFreeYearly] || '…'
-    );
-  }
-
   async initialize(): Promise<void> {
     if (!Capacitor.isNativePlatform()) {
       return;
@@ -54,11 +48,6 @@ export class BillingService {
       store.register([
         {
           id: MonetizationConfig.subscriptions.adFreeMonthly,
-          type: ProductType.PAID_SUBSCRIPTION,
-          platform: Platform.GOOGLE_PLAY
-        },
-        {
-          id: MonetizationConfig.subscriptions.adFreeYearly,
           type: ProductType.PAID_SUBSCRIPTION,
           platform: Platform.GOOGLE_PLAY
         }
@@ -86,10 +75,6 @@ export class BillingService {
 
   async purchaseMonthly(): Promise<boolean> {
     return this.order(MonetizationConfig.subscriptions.adFreeMonthly);
-  }
-
-  async purchaseYearly(): Promise<boolean> {
-    return this.order(MonetizationConfig.subscriptions.adFreeYearly);
   }
 
   async restore(): Promise<boolean> {
@@ -136,22 +121,17 @@ export class BillingService {
   }
 
   private refreshOwnership(store: any): void {
-    const monthly = store.owned(MonetizationConfig.subscriptions.adFreeMonthly);
-    const yearly = store.owned(MonetizationConfig.subscriptions.adFreeYearly);
-    const owned = !!(monthly || yearly);
+    const owned = !!store.owned(MonetizationConfig.subscriptions.adFreeMonthly);
     this.setAdFree(owned);
   }
 
   private cachePrices(store: any): void {
-    for (const id of [
-      MonetizationConfig.subscriptions.adFreeMonthly,
-      MonetizationConfig.subscriptions.adFreeYearly
-    ]) {
-      const product = store.get(id);
-      const pricing = product?.pricing?.price || product?.offers?.[0]?.pricingPhases?.[0]?.price;
-      if (pricing) {
-        this.priceLabels[id] = pricing;
-      }
+    const id = MonetizationConfig.subscriptions.adFreeMonthly;
+    const product = store.get(id);
+    const pricing =
+      product?.pricing?.price || product?.offers?.[0]?.pricingPhases?.[0]?.price;
+    if (pricing) {
+      this.priceLabels[id] = pricing;
     }
   }
 

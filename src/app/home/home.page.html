@@ -84,11 +84,6 @@
             {{ translation.t('premium.monthly') }}
             <span *ngIf="billing.monthlyPriceLabel !== '…'"> ({{ billing.monthlyPriceLabel }})</span>
           </ion-button>
-          <ion-button class="menu-action-button" expand="block" fill="outline" (click)="subscribeYearly()">
-            <ion-icon name="calendar-outline" slot="start"></ion-icon>
-            {{ translation.t('premium.yearly') }}
-            <span *ngIf="billing.yearlyPriceLabel !== '…'"> ({{ billing.yearlyPriceLabel }})</span>
-          </ion-button>
         </ng-container>
         <ion-button class="menu-action-button" expand="block" fill="clear" (click)="restorePurchases()">
           <ion-icon name="refresh-outline" slot="start"></ion-icon>
