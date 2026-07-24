@@ -25,7 +25,13 @@ export class AdsService {
   private initPromise: Promise<void> | null = null;
   private bannerVisible = false;
   private bannerDesired = false;
+  private bannerShowInFlight: Promise<void> | null = null;
   private lastInterstitialAt = 0;
+  private listenersAttached = false;
+  /** Prefer NPA when UMP forms are missing / consent unavailable (common in EEA). */
+  private preferNpa = false;
+  private bannerRetryAttempt = 0;
+  private bannerRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Approximate banner height used to pad the empty-state UI */
   readonly bannerHeightPx = 100;
@@ -48,29 +54,19 @@ export class AdsService {
 
     this.initPromise = (async () => {
       try {
-        // Google Mobile Ads SDK init (App ID from AndroidManifest / admob_app_id)
+        const testingDevices = [...MonetizationConfig.testingDeviceIds];
         await AdMob.initialize({
-          initializeForTesting: MonetizationConfig.useTestAds
+          initializeForTesting:
+            MonetizationConfig.useTestAds || testingDevices.length > 0,
+          testingDevices
         });
 
-        AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
-          this.bannerVisible = true;
-          this.bannerActiveSubject.next(true);
-        });
-        AdMob.addListener(BannerAdPluginEvents.SizeChanged, () => {
-          this.bannerActiveSubject.next(true);
-        });
-
-        // UMP consent (EEA / UK) before loading ads — AdMob policy
-        const consentInfo = await AdMob.requestConsentInfo();
-        if (
-          consentInfo.isConsentFormAvailable &&
-          consentInfo.status === AdmobConsentStatus.REQUIRED
-        ) {
-          await AdMob.showConsentForm();
-        }
-
+        this.attachBannerListeners();
         this.initialized = true;
+
+        // Consent must not block the empty-state banner.
+        await this.requestConsentBestEffort();
+
         await this.prepareInterstitial();
 
         if (this.bannerDesired && !this.billing.isAdFree) {
@@ -83,6 +79,51 @@ export class AdsService {
     })();
 
     return this.initPromise;
+  }
+
+  private attachBannerListeners() {
+    if (this.listenersAttached) {
+      return;
+    }
+    this.listenersAttached = true;
+
+    AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
+      this.bannerVisible = true;
+      this.bannerRetryAttempt = 0;
+      this.bannerActiveSubject.next(true);
+      console.info('[AdsService] banner loaded');
+    });
+
+    AdMob.addListener(BannerAdPluginEvents.SizeChanged, (size: any) => {
+      if (size?.width > 0 && size?.height > 0) {
+        this.bannerVisible = true;
+        this.bannerActiveSubject.next(true);
+      }
+    });
+
+    AdMob.addListener(BannerAdPluginEvents.FailedToLoad, (info: any) => {
+      this.bannerVisible = false;
+      this.bannerActiveSubject.next(false);
+      console.warn('[AdsService] banner FailedToLoad', info);
+      // ERROR_CODE_NO_FILL = 3 — common until AdMob has inventory / consent forms.
+      void this.scheduleBannerRetry();
+    });
+  }
+
+  private async requestConsentBestEffort(): Promise<void> {
+    try {
+      const consentInfo = await AdMob.requestConsentInfo();
+      if (
+        consentInfo.isConsentFormAvailable &&
+        consentInfo.status === AdmobConsentStatus.REQUIRED
+      ) {
+        await AdMob.showConsentForm();
+      }
+    } catch (err) {
+      // "no form(s) configured" → still request ads as non-personalized.
+      this.preferNpa = true;
+      console.warn('[AdsService] consent request failed — using NPA ads', err);
+    }
   }
 
   /** Show bottom banner (empty home screen). Safe to call before init completes. */
@@ -109,6 +150,7 @@ export class AdsService {
 
   async hideBanner(): Promise<void> {
     this.bannerDesired = false;
+    this.clearBannerRetry();
     if (!Capacitor.isNativePlatform() || !this.bannerVisible) {
       this.bannerActiveSubject.next(false);
       return;
@@ -123,6 +165,7 @@ export class AdsService {
 
   async removeBanner(): Promise<void> {
     this.bannerDesired = false;
+    this.clearBannerRetry();
     if (!Capacitor.isNativePlatform()) {
       this.bannerActiveSubject.next(false);
       return;
@@ -159,21 +202,74 @@ export class AdsService {
   }
 
   private async showBannerNow(): Promise<void> {
-    // Banner guide: adaptive size, bottom anchor, production unit baner_fot_of_war
-    const options: BannerAdOptions = {
-      adId: bannerAdUnitId(),
-      adSize: BannerAdSize.ADAPTIVE_BANNER,
-      position: BannerAdPosition.BOTTOM_CENTER,
-      margin: 0,
-      isTesting: MonetizationConfig.useTestAds
-    };
+    if (this.bannerShowInFlight) {
+      return this.bannerShowInFlight;
+    }
+    if (this.bannerVisible) {
+      try {
+        await AdMob.resumeBanner();
+        this.bannerActiveSubject.next(true);
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+
+    this.bannerShowInFlight = (async () => {
+      const options: BannerAdOptions = {
+        adId: bannerAdUnitId(),
+        adSize: BannerAdSize.ADAPTIVE_BANNER,
+        position: BannerAdPosition.BOTTOM_CENTER,
+        margin: 0,
+        isTesting: MonetizationConfig.useTestAds,
+        npa: this.preferNpa
+      };
+
+      try {
+        // Do not removeBanner() here — concurrent callers were destroying the
+        // in-flight AdView before Loaded fired (NO_FILL / blank UI).
+        await AdMob.showBanner(options);
+      } catch (err) {
+        console.warn('[AdsService] showBanner failed', err);
+        this.bannerVisible = false;
+        this.bannerActiveSubject.next(false);
+        void this.scheduleBannerRetry();
+      }
+    })();
 
     try {
-      await AdMob.showBanner(options);
-      this.bannerVisible = true;
-      this.bannerActiveSubject.next(true);
-    } catch (err) {
-      console.warn('[AdsService] showBanner failed', err);
+      await this.bannerShowInFlight;
+    } finally {
+      this.bannerShowInFlight = null;
+    }
+  }
+
+  private scheduleBannerRetry() {
+    if (!this.bannerDesired || this.billing.isAdFree || !Capacitor.isNativePlatform()) {
+      return;
+    }
+    if (this.bannerRetryAttempt >= 4) {
+      return;
+    }
+    this.clearBannerRetry();
+    this.bannerRetryAttempt += 1;
+    // After first NO_FILL, also try NPA (helps when UMP forms are missing in EEA).
+    if (this.bannerRetryAttempt >= 1) {
+      this.preferNpa = true;
+    }
+    const delayMs = Math.min(15000, 2000 * this.bannerRetryAttempt);
+    this.bannerRetryTimer = setTimeout(() => {
+      this.bannerRetryTimer = null;
+      if (this.bannerDesired && !this.billing.isAdFree && !this.bannerVisible) {
+        void this.showBannerNow();
+      }
+    }, delayMs);
+  }
+
+  private clearBannerRetry() {
+    if (this.bannerRetryTimer) {
+      clearTimeout(this.bannerRetryTimer);
+      this.bannerRetryTimer = null;
     }
   }
 
@@ -184,7 +280,8 @@ export class AdsService {
     }
     const options: AdOptions = {
       adId,
-      isTesting: MonetizationConfig.useTestAds
+      isTesting: MonetizationConfig.useTestAds,
+      npa: this.preferNpa
     };
     try {
       await AdMob.prepareInterstitial(options);

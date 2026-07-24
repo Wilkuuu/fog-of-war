@@ -2,6 +2,8 @@ import { Component, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@ang
 import { MenuController, AlertController, ModalController, ToastController } from '@ionic/angular';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import type { PluginListenerHandle } from '@capacitor/core';
+import { FilePicker } from '@capawesome/capacitor-file-picker';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../services/translation.service';
 import { AdsService } from '../services/ads.service';
@@ -28,6 +30,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
   videoZoom: number = 1.0;
   videoRotation: number = 0;
   showBannerSlot = false;
+  purchaseInFlight = false;
 
   private ctx: CanvasRenderingContext2D | null = null;
   private video: HTMLVideoElement | null = null;
@@ -35,7 +38,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
   private fogCanvas: HTMLCanvasElement | null = null;
   private fogCtx: CanvasRenderingContext2D | null = null;
   private fogHistory: ImageData[] = [];
-  private backButtonListener: any;
+  private backButtonListener?: PluginListenerHandle;
+  private appStateListener?: PluginListenerHandle;
   private activeTouches: number = 0;
   private twoFingerStartTime: number = 0;
   private isTwoFingerGesture: boolean = false;
@@ -44,6 +48,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
   private displayHeight: number = 0;
   private adFreeSub?: Subscription;
   private bannerSub?: Subscription;
+  /** Suppress banner restore while file/billing sheets are open */
+  private suppressBannerRestore = false;
 
   constructor(
     private menuController: MenuController,
@@ -69,13 +75,12 @@ export class HomePage implements AfterViewInit, OnDestroy {
   }
 
   async onMenuDidClose() {
-    if (!this.videoUrl && !this.billing.isAdFree) {
-      await this.ads.showBannerIfAllowed();
-    }
+    await this.maybeRestoreBanner();
   }
 
   ngAfterViewInit() {
     this.setupBackButtonHandler();
+    this.setupAppStateHandler();
     this.enableFullScreen();
     this.checkAndShowTutorial();
     this.showBannerSlot = !this.billing.isAdFree;
@@ -83,7 +88,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.showBannerSlot = !adFree && !this.videoUrl;
       if (adFree) {
         await this.ads.removeBanner();
-      } else if (!this.videoUrl) {
+      } else if (!this.videoUrl && !this.suppressBannerRestore) {
         await this.ads.showBannerIfAllowed();
       }
     });
@@ -105,6 +110,19 @@ export class HomePage implements AfterViewInit, OnDestroy {
         await this.ads.showBannerIfAllowed();
       }
     }, 100);
+  }
+
+  private async maybeRestoreBanner() {
+    if (
+      this.suppressBannerRestore ||
+      this.videoUrl ||
+      this.billing.isAdFree ||
+      this.purchaseInFlight
+    ) {
+      return;
+    }
+    this.showBannerSlot = true;
+    await this.ads.showBannerIfAllowed();
   }
 
   async checkAndShowTutorial() {
@@ -194,36 +212,66 @@ export class HomePage implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** After Play Billing / picker sheets, restore a usable UI state. */
+  setupAppStateHandler() {
+    this.appStateListener = App.addListener('appStateChange', async ({ isActive }) => {
+      if (!isActive) {
+        return;
+      }
+      this.purchaseInFlight = false;
+      this.suppressBannerRestore = false;
+      // Billing sheets can leave the side menu half-open and blocking taps.
+      await this.menuController.enable(true, 'main-menu');
+      const isMenuOpen = await this.menuController.isOpen('main-menu');
+      if (isMenuOpen && !this.videoUrl) {
+        await this.menuController.close('main-menu');
+      }
+      await this.maybeRestoreBanner();
+    });
+  }
+
   ngOnDestroy() {
     this.adFreeSub?.unsubscribe();
     this.bannerSub?.unsubscribe();
-    if (this.backButtonListener) {
-      this.backButtonListener.remove();
-    }
+    this.backButtonListener?.remove();
+    this.appStateListener?.remove();
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
-    if (this.videoUrl) {
-      URL.revokeObjectURL(this.videoUrl);
-    }
+    this.revokeVideoUrl();
     this.ads.removeBanner();
   }
 
   async selectVideo() {
     await this.menuController.close('main-menu');
-    this.pickVideoFromGallery();
+    await this.pickVideoFromGallery();
   }
 
   async subscribeMonthly() {
-    const ok = await this.billing.purchaseMonthly();
-    if (this.billing.purchaseError === 'cancelled') {
+    if (this.purchaseInFlight) {
       return;
     }
-    await this.showPremiumToast(ok);
-    if (ok) {
-      await this.ads.removeBanner();
-      await this.closeMenu();
+    this.purchaseInFlight = true;
+    this.suppressBannerRestore = true;
+    await this.ads.hideBanner();
+    await this.menuController.close('main-menu');
+
+    try {
+      const ok = await this.billing.purchaseMonthly();
+      if (this.billing.purchaseError === 'cancelled') {
+        return;
+      }
+      await this.showPremiumToast(ok);
+      if (ok) {
+        await this.ads.removeBanner();
+        this.showBannerSlot = false;
+      }
+    } finally {
+      this.purchaseInFlight = false;
+      this.suppressBannerRestore = false;
+      await this.menuController.close('main-menu');
+      await this.maybeRestoreBanner();
     }
   }
 
@@ -255,60 +303,113 @@ export class HomePage implements AfterViewInit, OnDestroy {
     await toast.present();
   }
 
-  pickVideoFromGallery() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'video/*';
-    input.style.display = 'none';
-    document.body.appendChild(input);
+  /**
+   * Native FilePicker avoids WebView <input type="file"> activity-result races
+   * with cordova-plugin-purchase / Play Billing sheets.
+   */
+  async pickVideoFromGallery() {
+    this.suppressBannerRestore = true;
+    await this.ads.hideBanner();
 
-    input.onchange = async (event: any) => {
-      const file = event.target.files[0];
-      if (file) {
-        if (this.videoUrl) {
-          URL.revokeObjectURL(this.videoUrl);
-        }
-        this.videoUrl = URL.createObjectURL(file);
-        document.body.removeChild(input);
-        this.showBannerSlot = false;
-        await this.ads.hideBanner();
-
-        const alert = await this.alertController.create({
-          header: this.translation.t('alert.addFog'),
-          message: this.translation.t('alert.addFogMessage'),
-          cssClass: 'custom-alert',
-          buttons: [
-            {
-              text: this.translation.t('alert.noFog'),
-              cssClass: 'alert-button-secondary',
-              handler: () => {
-                this.hasFog = false;
-                this.loadVideo();
-                this.ads.showInterstitialIfAllowed();
-              }
-            },
-            {
-              text: this.translation.t('alert.addFogButton'),
-              cssClass: 'alert-button-primary',
-              handler: () => {
-                this.hasFog = true;
-                this.loadVideo();
-                this.ads.showInterstitialIfAllowed();
-              }
-            }
-          ]
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const result = await FilePicker.pickVideos({
+          limit: 1,
+          multiple: false,
+          readData: false
         });
-        await alert.present();
-      } else {
-        document.body.removeChild(input);
+        const file = result.files?.[0];
+        if (!file?.path) {
+          return;
+        }
+        const src = Capacitor.convertFileSrc(file.path);
+        await this.applySelectedVideo(src);
+        return;
       }
-    };
 
-    input.oncancel = () => {
-      document.body.removeChild(input);
-    };
+      await this.pickVideoWithHtmlInput();
+    } catch (err: any) {
+      // User cancel / dismiss — keep current video
+      const message = String(err?.message || err || '');
+      if (!/cancel|dismiss|picker/i.test(message)) {
+        console.warn('[HomePage] pickVideo failed', err);
+      }
+    } finally {
+      this.suppressBannerRestore = false;
+      await this.maybeRestoreBanner();
+    }
+  }
 
-    input.click();
+  private pickVideoWithHtmlInput(): Promise<void> {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'video/*';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+
+      const cleanup = () => {
+        if (input.parentNode) {
+          document.body.removeChild(input);
+        }
+      };
+
+      input.onchange = async (event: any) => {
+        const file = event.target.files?.[0];
+        cleanup();
+        if (file) {
+          await this.applySelectedVideo(URL.createObjectURL(file));
+        }
+        resolve();
+      };
+
+      input.oncancel = () => {
+        cleanup();
+        resolve();
+      };
+
+      input.click();
+    });
+  }
+
+  private revokeVideoUrl() {
+    if (this.videoUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(this.videoUrl);
+    }
+  }
+
+  private async applySelectedVideo(src: string) {
+    this.revokeVideoUrl();
+    this.videoUrl = src;
+    this.showBannerSlot = false;
+    await this.ads.hideBanner();
+
+    const alert = await this.alertController.create({
+      header: this.translation.t('alert.addFog'),
+      message: this.translation.t('alert.addFogMessage'),
+      cssClass: 'custom-alert',
+      buttons: [
+        {
+          text: this.translation.t('alert.noFog'),
+          cssClass: 'alert-button-secondary',
+          handler: () => {
+            this.hasFog = false;
+            this.loadVideo();
+            this.ads.showInterstitialIfAllowed();
+          }
+        },
+        {
+          text: this.translation.t('alert.addFogButton'),
+          cssClass: 'alert-button-primary',
+          handler: () => {
+            this.hasFog = true;
+            this.loadVideo();
+            this.ads.showInterstitialIfAllowed();
+          }
+        }
+      ]
+    });
+    await alert.present();
   }
 
   loadVideo() {

@@ -52,3 +52,6 @@ Thumbs.db
 /android/.cxx/
 /ios
 
+
+# Local debug captures
+.debug-logs/
