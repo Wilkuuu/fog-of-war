@@ -28,7 +28,7 @@ export class AdsService {
   private lastInterstitialAt = 0;
 
   /** Approximate banner height used to pad the empty-state UI */
-  readonly bannerHeightPx = 60;
+  readonly bannerHeightPx = 100;
   private bannerActiveSubject = new BehaviorSubject<boolean>(false);
   readonly bannerActive$ = this.bannerActiveSubject.asObservable();
 

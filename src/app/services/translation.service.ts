@@ -33,7 +33,7 @@ export class TranslationService {
       'premium.restore': 'Restore purchases',
       'premium.active': 'Ad-free subscription active',
       'premium.purchaseOk': 'Thanks! Ads are now disabled.',
-      'premium.purchaseFail': 'Purchase unavailable. Check Play Console products / network.',
+      'premium.purchaseFail': 'Purchase unavailable. Product may still be syncing in Play Console, or install the app from the Play testing track.',
       'premium.restoreOk': 'Purchases restored — ads disabled.',
       'premium.restoreEmpty': 'No active subscription found.',
       
@@ -95,7 +95,7 @@ export class TranslationService {
       'premium.restore': 'Restaurar compras',
       'premium.active': 'Suscripción sin anuncios activa',
       'premium.purchaseOk': '¡Gracias! Los anuncios están desactivados.',
-      'premium.purchaseFail': 'Compra no disponible. Revisa productos de Play Console / red.',
+      'premium.purchaseFail': 'Compra no disponible. El producto puede estar sincronizándose en Play Console, o instala la app desde la pista de pruebas.',
       'premium.restoreOk': 'Compras restauradas — anuncios desactivados.',
       'premium.restoreEmpty': 'No se encontró una suscripción activa.',
       
@@ -157,7 +157,7 @@ export class TranslationService {
       'premium.restore': 'Przywróć zakupy',
       'premium.active': 'Subskrypcja bez reklam aktywna',
       'premium.purchaseOk': 'Dzięki! Reklamy są wyłączone.',
-      'premium.purchaseFail': 'Zakup niedostępny. Sprawdź produkty w Play Console / sieć.',
+      'premium.purchaseFail': 'Zakup niedostępny. Produkt może jeszcze się synchronizować w Play Console — zainstaluj aplikację z ścieżki testowej Play.',
       'premium.restoreOk': 'Zakupy przywrócone — reklamy wyłączone.',
       'premium.restoreEmpty': 'Nie znaleziono aktywnej subskrypcji.',
       
