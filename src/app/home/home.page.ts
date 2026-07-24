@@ -213,15 +213,6 @@ export class HomePage implements AfterViewInit, OnDestroy {
     }
   }
 
-  async subscribeYearly() {
-    const ok = await this.billing.purchaseYearly();
-    await this.showPremiumToast(ok);
-    if (ok) {
-      await this.ads.removeBanner();
-      this.closeMenu();
-    }
-  }
-
   async restorePurchases() {
     const ok = await this.billing.restore();
     const toast = await this.toastController.create({

@@ -37,8 +37,8 @@ export const MonetizationConfig = {
 
   /** Must match product IDs created in Play Console → Monetize → Subscriptions */
   subscriptions: {
-    adFreeMonthly: 'fogofwar_adfree_monthly',
-    adFreeYearly: 'fogofwar_adfree_yearly'
+    /** Play Console: fogofwar_mounthly (1 zł / month) */
+    adFreeMonthly: 'fogofwar_mounthly'
   },
 
   /** Minimum seconds between interstitial shows */

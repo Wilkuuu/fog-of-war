@@ -30,7 +30,6 @@ export class TranslationService {
 
       'premium.hint': 'Remove ads with a subscription',
       'premium.monthly': 'Ad-free monthly',
-      'premium.yearly': 'Ad-free yearly',
       'premium.restore': 'Restore purchases',
       'premium.active': 'Ad-free subscription active',
       'premium.purchaseOk': 'Thanks! Ads are now disabled.',
@@ -93,7 +92,6 @@ export class TranslationService {
 
       'premium.hint': 'Elimina los anuncios con una suscripción',
       'premium.monthly': 'Sin anuncios (mensual)',
-      'premium.yearly': 'Sin anuncios (anual)',
       'premium.restore': 'Restaurar compras',
       'premium.active': 'Suscripción sin anuncios activa',
       'premium.purchaseOk': '¡Gracias! Los anuncios están desactivados.',
@@ -156,7 +154,6 @@ export class TranslationService {
 
       'premium.hint': 'Usuń reklamy dzięki subskrypcji',
       'premium.monthly': 'Bez reklam (miesięcznie)',
-      'premium.yearly': 'Bez reklam (rocznie)',
       'premium.restore': 'Przywróć zakupy',
       'premium.active': 'Subskrypcja bez reklam aktywna',
       'premium.purchaseOk': 'Dzięki! Reklamy są wyłączone.',
