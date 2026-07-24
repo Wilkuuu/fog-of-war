@@ -13,9 +13,23 @@
 export const MonetizationConfig = {
   /**
    * false = production AdMob units (published builds).
-   * true = Google sample test ads (local/dev only).
+   * true = Google sample test ads (local/dev only — never ship to Play).
+   *
+   * Production fill also needs an AdMob Privacy & messaging (UMP) form for
+   * this app ID; without it EEA/PL often gets ERROR_CODE_NO_FILL (3).
    */
   useTestAds: false,
+
+  /**
+   * Hashed test device IDs from logcat:
+   * "Use RequestConfiguration.Builder().setTestDeviceIds(Arrays.asList(\"…\"))"
+   * Registered devices receive Google test creatives against production units
+   * (labeled Test Ad) so we can verify UI without shipping sample unit IDs.
+   */
+  testingDeviceIds: [
+    '55462EB1565FF8CBC86C6B2D9CD22C4E', // SM-S921B (current debug device)
+    'CE09EB96FF3222E18B641786ACE1DF91' // previous session hash
+  ] as readonly string[],
 
   admob: {
     /** Android App ID — also in res/values/strings.xml (admob_app_id) */

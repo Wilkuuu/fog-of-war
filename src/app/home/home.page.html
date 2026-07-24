@@ -15,7 +15,7 @@
       <!-- Video Section -->
       <div class="menu-section">
         <h3 class="section-title">{{ translation.t('menu.video') }}</h3>
-        <ion-button class="menu-action-button" expand="block" fill="solid" (click)="selectVideo(); closeMenu()">
+        <ion-button class="menu-action-button" expand="block" fill="solid" (click)="selectVideo()">
           <ion-icon name="videocam-outline" slot="start"></ion-icon>
           <span *ngIf="!videoUrl">{{ translation.t('empty.selectVideoButton') }}</span>
           <span *ngIf="videoUrl">{{ translation.t('empty.changeVideoButton') }}</span>
@@ -85,7 +85,7 @@
         <p class="premium-status" *ngIf="billing.isAdFree">{{ translation.t('premium.active') }}</p>
         <ng-container *ngIf="!billing.isAdFree">
           <p class="premium-hint">{{ translation.t('premium.hint') }}</p>
-          <ion-button class="menu-action-button primary" expand="block" fill="solid" (click)="subscribeMonthly()">
+          <ion-button class="menu-action-button primary" expand="block" fill="solid" (click)="subscribeMonthly()" [disabled]="purchaseInFlight">
             <ion-icon name="sparkles-outline" slot="start"></ion-icon>
             {{ translation.t('premium.monthly') }}
             <span *ngIf="billing.monthlyPriceLabel !== '…'"> ({{ billing.monthlyPriceLabel }})</span>
