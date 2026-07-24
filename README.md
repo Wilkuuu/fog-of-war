@@ -130,5 +130,5 @@ Video selection uses the system file picker when possible. Permissions are reque
 - **Background**: Pure black (#000000) throughout the app
 - **Menu Access**: Two-finger tap gesture (menu button is barely visible as fallback)
 - **Application ID**: `com.fogofwar.app`
-- **targetSdk**: 35 (Google Play requirement)
+- **targetSdk**: 36 (Google Play requirement — Android 16)
 

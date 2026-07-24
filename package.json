@@ -1,6 +1,6 @@
 {
   "name": "fog-of-war",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "RPG fog of war app for videos",
   "main": "index.js",
   "scripts": {
