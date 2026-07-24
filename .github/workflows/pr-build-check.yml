@@ -5,6 +5,11 @@ on:
     branches:
       - '**'  # Sprawdza wszystkie branche
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   build-check:
     runs-on: ubuntu-latest
@@ -50,6 +55,7 @@ jobs:
 
       - name: Comment PR with build status
         if: always()
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -72,32 +78,33 @@ jobs:
             *Automatyczna wiadomość z GitHub Actions*
             `;
             
-            // Znajdź istniejący komentarz od bota
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            
-            const botComment = comments.data.find(comment => 
-              comment.user.type === 'Bot' && 
-              comment.body.includes('🔨 Build Status')
-            );
-            
-            if (botComment) {
-              // Aktualizuj istniejący komentarz
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: message
-              });
-            } else {
-              // Utwórz nowy komentarz
-              await github.rest.issues.createComment({
+            try {
+              const comments = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: message
               });
+              
+              const botComment = comments.data.find(comment => 
+                comment.user.type === 'Bot' && 
+                comment.body.includes('🔨 Build Status')
+              );
+              
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: message
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: message
+                });
+              }
+            } catch (error) {
+              core.warning(`Could not comment on PR: ${error.message}`);
             }
