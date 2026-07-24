@@ -3,6 +3,7 @@
  *
  * AdMob App ID: Fog of war — ca-app-pub-9710890023203657~5109682400
  * Banner unit:  baner_fot_of_war — ca-app-pub-9710890023203657/3218996173
+ * Interstitial: ca-app-pub-9710890023203657/3985885578
  *
  * Production IDs can also be overridden via GitHub Actions secrets
  * (ADMOB_APP_ID, ADMOB_BANNER_AD_UNIT_ID) during CI.
@@ -41,11 +42,8 @@ export const MonetizationConfig = {
     },
     interstitial: {
       test: 'ca-app-pub-3940256099942544/1033173712',
-      /**
-       * Set after creating an Interstitial unit in AdMob.
-       * Empty = interstitial disabled in production (avoids shipping test ads).
-       */
-      production: ''
+      /** Production interstitial unit */
+      production: 'ca-app-pub-9710890023203657/3985885578'
     }
   },
 
