@@ -20,6 +20,30 @@
           <span *ngIf="!hasVideo">{{ translation.t('empty.selectVideoButton') }}</span>
           <span *ngIf="hasVideo">{{ translation.t('empty.changeVideoButton') }}</span>
         </ion-button>
+        <div class="queue-controls" *ngIf="queueSize > 1">
+          <p class="queue-position">{{ queuePositionLabel }}</p>
+          <p class="queue-hint">{{ translation.t('queue.swipeHint') }}</p>
+          <div class="queue-nav-row">
+            <ion-button
+              class="action-button"
+              expand="block"
+              fill="outline"
+              (click)="goToPreviousVideo()"
+              [disabled]="currentVideoIndex === 0">
+              <ion-icon name="chevron-back-outline" slot="start"></ion-icon>
+              {{ translation.t('queue.previous') }}
+            </ion-button>
+            <ion-button
+              class="action-button"
+              expand="block"
+              fill="outline"
+              (click)="goToNextVideo()"
+              [disabled]="currentVideoIndex >= queueSize - 1">
+              {{ translation.t('queue.next') }}
+              <ion-icon name="chevron-forward-outline" slot="end"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
       </div>
 
       <!-- Brush Size Section -->
@@ -73,7 +97,7 @@
       <!-- Settings Section -->
       <div class="menu-section">
         <h3 class="section-title">{{ translation.t('menu.settings') }}</h3>
-        <ion-button class="menu-action-button" expand="block" fill="outline" (click)="openLanguageSelector(); closeMenu()">
+        <ion-button class="menu-action-button" expand="block" fill="outline" (click)="openLanguageSelector()">
           <ion-icon name="language-outline" slot="start"></ion-icon>
           {{ translation.t('menu.language') }}
         </ion-button>
@@ -116,10 +140,6 @@
     </div>
 
     <div *ngIf="hasVideo" class="video-container" (touchstart)="onContainerTouch($event)" (touchend)="onContainerTouchEnd($event)">
-      <div class="video-queue-indicator" *ngIf="queueSize > 1">
-        <span>{{ queuePositionLabel }}</span>
-        <span class="video-queue-hint">{{ translation.t('queue.swipeHint') }}</span>
-      </div>
       <video 
         #videoElement 
         [src]="videoUrl" 

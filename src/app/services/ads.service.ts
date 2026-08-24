@@ -36,6 +36,8 @@ export class AdsService {
   private videoModeActive = false;
   /** When true, no interstitial may show (video is actively playing). */
   private playbackSuppressed = false;
+  /** When true, no banner may show (menu / first-run language / tutorial). */
+  private overlaySuppressed = false;
 
   /** Approximate banner height used to pad the empty-state UI */
   readonly bannerHeightPx = 100;
@@ -58,11 +60,11 @@ export class AdsService {
 
     this.initPromise = (async () => {
       try {
-        const testingDevices = [...MonetizationConfig.testingDeviceIds];
         await AdMob.initialize({
-          initializeForTesting:
-            MonetizationConfig.useTestAds || testingDevices.length > 0,
-          testingDevices
+          initializeForTesting: MonetizationConfig.useTestAds,
+          testingDevices: MonetizationConfig.useTestAds
+            ? [...MonetizationConfig.testingDeviceIds]
+            : []
         });
 
         this.attachBannerListeners();
@@ -92,7 +94,7 @@ export class AdsService {
     this.listenersAttached = true;
 
     AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
-      if (this.videoModeActive || this.playbackSuppressed) {
+      if (this.videoModeActive || this.playbackSuppressed || this.overlaySuppressed) {
         void this.removeBanner();
         return;
       }
@@ -103,7 +105,7 @@ export class AdsService {
     });
 
     AdMob.addListener(BannerAdPluginEvents.SizeChanged, (size: any) => {
-      if (this.videoModeActive || this.playbackSuppressed) {
+      if (this.videoModeActive || this.playbackSuppressed || this.overlaySuppressed) {
         void this.removeBanner();
         return;
       }
@@ -168,9 +170,23 @@ export class AdsService {
     return this.playbackSuppressed;
   }
 
+  /** Native banner sits above the WebView — hide it during modals / first-run UI. */
+  async setOverlaySuppressed(suppressed: boolean): Promise<void> {
+    this.overlaySuppressed = suppressed;
+    if (suppressed) {
+      this.bannerDesired = false;
+      this.clearBannerRetry();
+      await this.removeBanner();
+    }
+  }
+
+  isOverlaySuppressed(): boolean {
+    return this.overlaySuppressed;
+  }
+
   /** Show bottom banner (empty home screen). Safe to call before init completes. */
   async showBannerIfAllowed(): Promise<void> {
-    if (this.videoModeActive || this.playbackSuppressed) {
+    if (this.videoModeActive || this.playbackSuppressed || this.overlaySuppressed) {
       return;
     }
     this.bannerDesired = true;
@@ -351,6 +367,7 @@ export class AdsService {
       this.bannerDesired &&
       !this.videoModeActive &&
       !this.playbackSuppressed &&
+      !this.overlaySuppressed &&
       !this.billing.isAdFree &&
       Capacitor.isNativePlatform()
     );

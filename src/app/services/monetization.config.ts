@@ -22,15 +22,11 @@ export const MonetizationConfig = {
   useTestAds: false,
 
   /**
-   * Hashed test device IDs from logcat:
-   * "Use RequestConfiguration.Builder().setTestDeviceIds(Arrays.asList(\"…\"))"
-   * Registered devices receive Google test creatives against production units
-   * (labeled Test Ad) so we can verify UI without shipping sample unit IDs.
+   * Only used when useTestAds is true (local debug).
+   * Never ship hashed device IDs in production — AdMob then serves
+   * creatives with a "Test Ad" label on those phones.
    */
-  testingDeviceIds: [
-    '55462EB1565FF8CBC86C6B2D9CD22C4E', // SM-S921B (current debug device)
-    'CE09EB96FF3222E18B641786ACE1DF91' // previous session hash
-  ] as readonly string[],
+  testingDeviceIds: [] as readonly string[],
 
   admob: {
     /** Android App ID — also in res/values/strings.xml (admob_app_id) */

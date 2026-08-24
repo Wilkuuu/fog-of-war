@@ -20,6 +20,8 @@ export class TranslationService {
       'empty.selectVideoButton': 'Select Videos',
       'empty.changeVideoButton': 'Change Videos',
       'queue.swipeHint': 'Swipe to switch video',
+      'queue.previous': 'Previous',
+      'queue.next': 'Next',
       
       // Menu sections
       'menu.video': 'Video',
@@ -83,6 +85,8 @@ export class TranslationService {
       'empty.selectVideoButton': 'Seleccionar Videos',
       'empty.changeVideoButton': 'Cambiar Videos',
       'queue.swipeHint': 'Desliza para cambiar de video',
+      'queue.previous': 'Anterior',
+      'queue.next': 'Siguiente',
       
       // Menu sections
       'menu.video': 'Video',
@@ -146,6 +150,8 @@ export class TranslationService {
       'empty.selectVideoButton': 'Wybierz Wideo',
       'empty.changeVideoButton': 'Zmień Wideo',
       'queue.swipeHint': 'Przesuń palcem, aby zmienić wideo',
+      'queue.previous': 'Poprzednie',
+      'queue.next': 'Następne',
       
       // Menu sections
       'menu.video': 'Wideo',
