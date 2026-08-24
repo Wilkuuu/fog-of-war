@@ -17,13 +17,13 @@
         <h3 class="section-title">{{ translation.t('menu.video') }}</h3>
         <ion-button class="menu-action-button" expand="block" fill="solid" (click)="selectVideo()">
           <ion-icon name="videocam-outline" slot="start"></ion-icon>
-          <span *ngIf="!videoUrl">{{ translation.t('empty.selectVideoButton') }}</span>
-          <span *ngIf="videoUrl">{{ translation.t('empty.changeVideoButton') }}</span>
+          <span *ngIf="!hasVideo">{{ translation.t('empty.selectVideoButton') }}</span>
+          <span *ngIf="hasVideo">{{ translation.t('empty.changeVideoButton') }}</span>
         </ion-button>
       </div>
 
       <!-- Brush Size Section -->
-      <div class="menu-section" *ngIf="videoUrl">
+      <div class="menu-section" *ngIf="hasVideo">
         <h3 class="section-title">{{ translation.t('menu.brushSize') }}</h3>
         <div class="brush-size-selector">
           <ion-segment [(ngModel)]="brushSizeStr" (ionChange)="changeBrushSize($event)" class="brush-segment">
@@ -41,7 +41,7 @@
       </div>
 
       <!-- Video Rotation Section -->
-      <div class="menu-section" *ngIf="videoUrl">
+      <div class="menu-section" *ngIf="hasVideo">
         <h3 class="section-title">Video</h3>
         <div class="action-buttons">
           <ion-button class="action-button" expand="block" fill="outline" (click)="rotateVideo(); closeMenu()">
@@ -52,7 +52,7 @@
       </div>
 
       <!-- Actions Section -->
-      <div class="menu-section" *ngIf="videoUrl">
+      <div class="menu-section" *ngIf="hasVideo">
         <h3 class="section-title">{{ translation.t('menu.actions') }}</h3>
         <div class="action-buttons">
           <ion-button class="action-button primary" expand="block" fill="solid" (click)="removeAllFog(); closeMenu()">
@@ -102,7 +102,7 @@
 
 <div class="ion-page" [id]="contentId" style="height: 100vh; display: flex; flex-direction: column;">
   <ion-content [fullscreen]="true" class="video-content" style="flex: 1; min-height: 0;">
-    <div *ngIf="!videoUrl" class="empty-state" [class.empty-state--with-banner]="showBannerSlot">
+    <div *ngIf="!hasVideo" class="empty-state" [class.empty-state--with-banner]="showBannerSlot">
       <div class="empty-state-content">
         <h1 class="empty-state-title">{{ translation.t('app.title') }}</h1>
         <p class="empty-state-description">{{ translation.t('empty.selectVideo') }}</p>
@@ -115,7 +115,11 @@
       <div class="ad-banner-slot" *ngIf="showBannerSlot" aria-hidden="true"></div>
     </div>
 
-    <div *ngIf="videoUrl" class="video-container" (touchstart)="onContainerTouch($event)" (touchend)="onContainerTouchEnd($event)">
+    <div *ngIf="hasVideo" class="video-container" (touchstart)="onContainerTouch($event)" (touchend)="onContainerTouchEnd($event)">
+      <div class="video-queue-indicator" *ngIf="queueSize > 1">
+        <span>{{ queuePositionLabel }}</span>
+        <span class="video-queue-hint">{{ translation.t('queue.swipeHint') }}</span>
+      </div>
       <video 
         #videoElement 
         [src]="videoUrl" 
