@@ -1,4 +1,4 @@
-<ion-content class="tutorial-content">
+<ion-content class="tutorial-content" [fullscreen]="true" [scrollY]="false">
   <div class="tutorial-container">
     <div class="tutorial-header">
       <h1 class="tutorial-title">{{ translation.t('tutorial.welcome') }}</h1>
@@ -11,8 +11,10 @@
       <div class="step-icon">
         <ion-icon [name]="steps[currentStep].icon"></ion-icon>
       </div>
-      <h2 class="step-title">{{ translation.t(steps[currentStep].titleKey) }}</h2>
-      <p class="step-description">{{ translation.t(steps[currentStep].descriptionKey) }}</p>
+      <div class="step-copy">
+        <h2 class="step-title">{{ translation.t(steps[currentStep].titleKey) }}</h2>
+        <p class="step-description">{{ translation.t(steps[currentStep].descriptionKey) }}</p>
+      </div>
     </div>
 
     <div class="tutorial-indicators">
