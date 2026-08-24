@@ -16,9 +16,10 @@ export class TranslationService {
       'app.controls': 'Controls',
       
       // Empty state
-      'empty.selectVideo': 'Select a video to begin revealing hidden content',
-      'empty.selectVideoButton': 'Select Video',
-      'empty.changeVideoButton': 'Change Video',
+      'empty.selectVideo': 'Select one or more videos to begin revealing hidden content',
+      'empty.selectVideoButton': 'Select Videos',
+      'empty.changeVideoButton': 'Change Videos',
+      'queue.swipeHint': 'Swipe to switch video',
       
       // Menu sections
       'menu.video': 'Video',
@@ -78,9 +79,10 @@ export class TranslationService {
       'app.controls': 'Controles',
       
       // Empty state
-      'empty.selectVideo': 'Selecciona un video para comenzar a revelar contenido oculto',
-      'empty.selectVideoButton': 'Seleccionar Video',
-      'empty.changeVideoButton': 'Cambiar Video',
+      'empty.selectVideo': 'Selecciona uno o más videos para comenzar a revelar contenido oculto',
+      'empty.selectVideoButton': 'Seleccionar Videos',
+      'empty.changeVideoButton': 'Cambiar Videos',
+      'queue.swipeHint': 'Desliza para cambiar de video',
       
       // Menu sections
       'menu.video': 'Video',
@@ -140,9 +142,10 @@ export class TranslationService {
       'app.controls': 'Sterowanie',
       
       // Empty state
-      'empty.selectVideo': 'Wybierz wideo, aby rozpocząć odkrywanie ukrytej zawartości',
+      'empty.selectVideo': 'Wybierz jedno lub więcej wideo, aby rozpocząć odkrywanie ukrytej zawartości',
       'empty.selectVideoButton': 'Wybierz Wideo',
       'empty.changeVideoButton': 'Zmień Wideo',
+      'queue.swipeHint': 'Przesuń palcem, aby zmienić wideo',
       
       // Menu sections
       'menu.video': 'Wideo',

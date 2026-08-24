@@ -32,6 +32,10 @@ export class AdsService {
   private preferNpa = false;
   private bannerRetryAttempt = 0;
   private bannerRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** When true, no banner may show (video selected / playing). */
+  private videoModeActive = false;
+  /** When true, no interstitial may show (video is actively playing). */
+  private playbackSuppressed = false;
 
   /** Approximate banner height used to pad the empty-state UI */
   readonly bannerHeightPx = 100;
@@ -69,7 +73,7 @@ export class AdsService {
 
         await this.prepareInterstitial();
 
-        if (this.bannerDesired && !this.billing.isAdFree) {
+        if (this.canShowBanner()) {
           await this.showBannerNow();
         }
       } catch (err) {
@@ -88,6 +92,10 @@ export class AdsService {
     this.listenersAttached = true;
 
     AdMob.addListener(BannerAdPluginEvents.Loaded, () => {
+      if (this.videoModeActive || this.playbackSuppressed) {
+        void this.removeBanner();
+        return;
+      }
       this.bannerVisible = true;
       this.bannerRetryAttempt = 0;
       this.bannerActiveSubject.next(true);
@@ -95,6 +103,10 @@ export class AdsService {
     });
 
     AdMob.addListener(BannerAdPluginEvents.SizeChanged, (size: any) => {
+      if (this.videoModeActive || this.playbackSuppressed) {
+        void this.removeBanner();
+        return;
+      }
       if (size?.width > 0 && size?.height > 0) {
         this.bannerVisible = true;
         this.bannerActiveSubject.next(true);
@@ -126,14 +138,47 @@ export class AdsService {
     }
   }
 
+  /** Hide banner for the whole video session (picker → playback). */
+  async setVideoModeActive(active: boolean): Promise<void> {
+    this.videoModeActive = active;
+    if (active) {
+      this.bannerDesired = false;
+      this.clearBannerRetry();
+      await this.removeBanner();
+    } else {
+      this.playbackSuppressed = false;
+    }
+  }
+
+  /** Block interstitials while frames are playing. */
+  async setPlaybackSuppressed(suppressed: boolean): Promise<void> {
+    this.playbackSuppressed = suppressed;
+    if (suppressed) {
+      this.bannerDesired = false;
+      this.clearBannerRetry();
+      await this.removeBanner();
+    }
+  }
+
+  isVideoModeActive(): boolean {
+    return this.videoModeActive;
+  }
+
+  isPlaybackSuppressed(): boolean {
+    return this.playbackSuppressed;
+  }
+
   /** Show bottom banner (empty home screen). Safe to call before init completes. */
   async showBannerIfAllowed(): Promise<void> {
+    if (this.videoModeActive || this.playbackSuppressed) {
+      return;
+    }
     this.bannerDesired = true;
     if (this.billing.isAdFree) {
       return;
     }
     await this.initialize();
-    if (!Capacitor.isNativePlatform() || this.billing.isAdFree) {
+    if (!this.canShowBanner()) {
       return;
     }
     if (this.bannerVisible) {
@@ -181,7 +226,7 @@ export class AdsService {
 
   async showInterstitialIfAllowed(): Promise<void> {
     await this.initialize();
-    if (!this.canShowAds() || !interstitialAdUnitId()) {
+    if (this.playbackSuppressed || !this.canShowAds() || !interstitialAdUnitId()) {
       return;
     }
 
@@ -202,6 +247,9 @@ export class AdsService {
   }
 
   private async showBannerNow(): Promise<void> {
+    if (!this.canShowBanner()) {
+      return;
+    }
     if (this.bannerShowInFlight) {
       return this.bannerShowInFlight;
     }
@@ -245,7 +293,7 @@ export class AdsService {
   }
 
   private scheduleBannerRetry() {
-    if (!this.bannerDesired || this.billing.isAdFree || !Capacitor.isNativePlatform()) {
+    if (!this.canShowBanner()) {
       return;
     }
     if (this.bannerRetryAttempt >= 4) {
@@ -260,7 +308,7 @@ export class AdsService {
     const delayMs = Math.min(15000, 2000 * this.bannerRetryAttempt);
     this.bannerRetryTimer = setTimeout(() => {
       this.bannerRetryTimer = null;
-      if (this.bannerDesired && !this.billing.isAdFree && !this.bannerVisible) {
+      if (this.canShowBanner() && !this.bannerVisible) {
         void this.showBannerNow();
       }
     }, delayMs);
@@ -295,6 +343,16 @@ export class AdsService {
       Capacitor.isNativePlatform() &&
       this.initialized &&
       !this.billing.isAdFree
+    );
+  }
+
+  private canShowBanner(): boolean {
+    return (
+      this.bannerDesired &&
+      !this.videoModeActive &&
+      !this.playbackSuppressed &&
+      !this.billing.isAdFree &&
+      Capacitor.isNativePlatform()
     );
   }
 }

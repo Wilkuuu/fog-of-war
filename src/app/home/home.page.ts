@@ -11,6 +11,15 @@ import { BillingService } from '../services/billing.service';
 import { TutorialComponent } from '../components/tutorial/tutorial.component';
 import { LanguageSelectorComponent } from '../components/language-selector/language-selector.component';
 
+interface QueuedVideo {
+  src: string;
+  name?: string;
+  isBlob?: boolean;
+  fogSnapshot?: ImageData | null;
+  rotation?: number;
+  hasFog?: boolean;
+}
+
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
@@ -20,7 +29,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
   @ViewChild('videoElement', { static: false }) videoElement!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvasElement', { static: false }) canvasElement!: ElementRef<HTMLCanvasElement>;
 
-  videoUrl: string | null = null;
+  videoQueue: QueuedVideo[] = [];
+  currentVideoIndex = 0;
   brushSize: number = 18;
   brushSizeStr: string = '18';
   isDrawing: boolean = false;
@@ -50,6 +60,25 @@ export class HomePage implements AfterViewInit, OnDestroy {
   private bannerSub?: Subscription;
   /** Suppress banner restore while file/billing sheets are open */
   private suppressBannerRestore = false;
+  private swipeStartX = 0;
+  private swipeStartY = 0;
+  private swipeTouchDrawn = false;
+
+  get hasVideo(): boolean {
+    return this.videoQueue.length > 0;
+  }
+
+  get videoUrl(): string | null {
+    return this.videoQueue[this.currentVideoIndex]?.src ?? null;
+  }
+
+  get queueSize(): number {
+    return this.videoQueue.length;
+  }
+
+  get queuePositionLabel(): string {
+    return `${this.currentVideoIndex + 1}/${this.videoQueue.length}`;
+  }
 
   constructor(
     private menuController: MenuController,
@@ -85,15 +114,15 @@ export class HomePage implements AfterViewInit, OnDestroy {
     this.checkAndShowTutorial();
     this.showBannerSlot = !this.billing.isAdFree;
     this.adFreeSub = this.billing.adFree$.subscribe(async (adFree) => {
-      this.showBannerSlot = !adFree && !this.videoUrl;
+      this.showBannerSlot = !adFree && !this.hasVideo;
       if (adFree) {
         await this.ads.removeBanner();
-      } else if (!this.videoUrl && !this.suppressBannerRestore) {
+      } else if (!this.hasVideo && !this.suppressBannerRestore) {
         await this.ads.showBannerIfAllowed();
       }
     });
     this.bannerSub = this.ads.bannerActive$.subscribe((active) => {
-      if (!this.billing.isAdFree && !this.videoUrl) {
+      if (!this.billing.isAdFree && !this.hasVideo) {
         this.showBannerSlot = active || !Capacitor.isNativePlatform();
       }
     });
@@ -105,7 +134,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
         this.canvas = this.canvasElement.nativeElement;
         this.ctx = this.canvas.getContext('2d');
       }
-      if (!this.videoUrl && !this.billing.isAdFree) {
+      if (!this.hasVideo && !this.billing.isAdFree) {
         this.showBannerSlot = true;
         await this.ads.showBannerIfAllowed();
       }
@@ -115,9 +144,10 @@ export class HomePage implements AfterViewInit, OnDestroy {
   private async maybeRestoreBanner() {
     if (
       this.suppressBannerRestore ||
-      this.videoUrl ||
+      this.hasVideo ||
       this.billing.isAdFree ||
-      this.purchaseInFlight
+      this.purchaseInFlight ||
+      this.ads.isVideoModeActive()
     ) {
       return;
     }
@@ -223,7 +253,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
       // Billing sheets can leave the side menu half-open and blocking taps.
       await this.menuController.enable(true, 'main-menu');
       const isMenuOpen = await this.menuController.isOpen('main-menu');
-      if (isMenuOpen && !this.videoUrl) {
+      if (isMenuOpen && !this.hasVideo) {
         await this.menuController.close('main-menu');
       }
       await this.maybeRestoreBanner();
@@ -239,7 +269,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
-    this.revokeVideoUrl();
+    this.revokeAllVideoUrls();
     this.ads.removeBanner();
   }
 
@@ -314,16 +344,23 @@ export class HomePage implements AfterViewInit, OnDestroy {
     try {
       if (Capacitor.isNativePlatform()) {
         const result = await FilePicker.pickVideos({
-          limit: 1,
-          multiple: false,
+          limit: 0,
           readData: false
         });
-        const file = result.files?.[0];
-        if (!file?.path) {
+        const files = result.files ?? [];
+        if (files.length === 0) {
           return;
         }
-        const src = Capacitor.convertFileSrc(file.path);
-        await this.applySelectedVideo(src);
+        const videos: QueuedVideo[] = files
+          .filter((file) => !!file.path)
+          .map((file) => ({
+            src: Capacitor.convertFileSrc(file.path!),
+            name: file.name
+          }));
+        if (videos.length === 0) {
+          return;
+        }
+        await this.applySelectedVideos(videos);
         return;
       }
 
@@ -345,6 +382,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'video/*';
+      input.multiple = true;
       input.style.display = 'none';
       document.body.appendChild(input);
 
@@ -355,10 +393,15 @@ export class HomePage implements AfterViewInit, OnDestroy {
       };
 
       input.onchange = async (event: any) => {
-        const file = event.target.files?.[0];
+        const files = Array.from(event.target.files ?? []) as File[];
         cleanup();
-        if (file) {
-          await this.applySelectedVideo(URL.createObjectURL(file));
+        if (files.length > 0) {
+          const videos: QueuedVideo[] = files.map((file) => ({
+            src: URL.createObjectURL(file),
+            name: file.name,
+            isBlob: true
+          }));
+          await this.applySelectedVideos(videos);
         }
         resolve();
       };
@@ -372,17 +415,38 @@ export class HomePage implements AfterViewInit, OnDestroy {
     });
   }
 
-  private revokeVideoUrl() {
-    if (this.videoUrl?.startsWith('blob:')) {
-      URL.revokeObjectURL(this.videoUrl);
+  private revokeAllVideoUrls() {
+    for (const video of this.videoQueue) {
+      if (video.isBlob) {
+        URL.revokeObjectURL(video.src);
+      }
     }
   }
 
-  private async applySelectedVideo(src: string) {
-    this.revokeVideoUrl();
-    this.videoUrl = src;
+  private saveCurrentVideoState() {
+    const current = this.videoQueue[this.currentVideoIndex];
+    if (!current || !this.fogCtx || !this.fogCanvas) {
+      return;
+    }
+    current.fogSnapshot = this.fogCtx.getImageData(
+      0,
+      0,
+      this.fogCanvas.width,
+      this.fogCanvas.height
+    );
+    current.rotation = this.videoRotation;
+    current.hasFog = this.hasFog;
+  }
+
+  private async applySelectedVideos(videos: QueuedVideo[]) {
+    this.saveCurrentVideoState();
+    this.revokeAllVideoUrls();
+    this.videoQueue = videos;
+    this.currentVideoIndex = 0;
+    this.hasFog = true;
+    this.videoRotation = 0;
     this.showBannerSlot = false;
-    await this.ads.hideBanner();
+    await this.ads.setVideoModeActive(true);
 
     const alert = await this.alertController.create({
       header: this.translation.t('alert.addFog'),
@@ -393,18 +457,14 @@ export class HomePage implements AfterViewInit, OnDestroy {
           text: this.translation.t('alert.noFog'),
           cssClass: 'alert-button-secondary',
           handler: () => {
-            this.hasFog = false;
-            this.loadVideo();
-            this.ads.showInterstitialIfAllowed();
+            void this.startSelectedVideo(false);
           }
         },
         {
           text: this.translation.t('alert.addFogButton'),
           cssClass: 'alert-button-primary',
           handler: () => {
-            this.hasFog = true;
-            this.loadVideo();
-            this.ads.showInterstitialIfAllowed();
+            void this.startSelectedVideo(true);
           }
         }
       ]
@@ -412,7 +472,66 @@ export class HomePage implements AfterViewInit, OnDestroy {
     await alert.present();
   }
 
-  loadVideo() {
+  private async startSelectedVideo(withFog: boolean) {
+    this.hasFog = withFog;
+    this.videoQueue[this.currentVideoIndex].hasFog = withFog;
+    await this.ads.showInterstitialIfAllowed();
+    await this.ads.setPlaybackSuppressed(true);
+    this.loadVideo();
+  }
+
+  goToNextVideo() {
+    if (this.currentVideoIndex >= this.videoQueue.length - 1) {
+      return;
+    }
+    void this.goToVideoIndex(this.currentVideoIndex + 1);
+  }
+
+  goToPreviousVideo() {
+    if (this.currentVideoIndex <= 0) {
+      return;
+    }
+    void this.goToVideoIndex(this.currentVideoIndex - 1);
+  }
+
+  private async goToVideoIndex(index: number) {
+    if (index < 0 || index >= this.videoQueue.length || index === this.currentVideoIndex) {
+      return;
+    }
+
+    this.saveCurrentVideoState();
+    this.currentVideoIndex = index;
+    const next = this.videoQueue[index];
+    this.hasFog = next.hasFog ?? true;
+    this.videoRotation = next.rotation ?? 0;
+    this.fogHistory = [];
+    await this.ads.setPlaybackSuppressed(true);
+    this.loadVideo(true);
+  }
+
+  private trySwipeNavigation(endX: number, endY: number) {
+    if (this.videoQueue.length <= 1 || this.swipeTouchDrawn) {
+      return;
+    }
+
+    const dx = endX - this.swipeStartX;
+    const dy = endY - this.swipeStartY;
+    if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) {
+      return;
+    }
+
+    if (dx < 0) {
+      this.goToNextVideo();
+    } else {
+      this.goToPreviousVideo();
+    }
+  }
+  
+  loadVideo(restoreSnapshot = false) {
+    if (!this.videoUrl) {
+      return;
+    }
+
     this.videoZoom = 1.0;
 
     // Cancel existing animation loop before loading new video
@@ -429,7 +548,10 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.video.load();
 
       this.video.addEventListener('loadedmetadata', () => {
-        if (this.video && this.video.videoHeight > this.video.videoWidth) {
+        const saved = this.videoQueue[this.currentVideoIndex];
+        if (restoreSnapshot && saved?.rotation !== undefined) {
+          this.videoRotation = saved.rotation;
+        } else if (this.video && this.video.videoHeight > this.video.videoWidth) {
           this.videoRotation = 90;
         } else {
           this.videoRotation = 0;
@@ -439,16 +561,16 @@ export class HomePage implements AfterViewInit, OnDestroy {
           this.canvas = this.canvasElement.nativeElement;
           this.ctx = this.canvas.getContext('2d');
         }
-        this.setupCanvas();
+        this.setupCanvas(restoreSnapshot);
       }, { once: true });
     }, 100);
   }
 
-  setupCanvas() {
+  setupCanvas(restoreSnapshot = false) {
     if (!this.canvas || !this.video || !this.ctx) return;
 
     if (this.video.readyState < 2) {
-      this.video.addEventListener('loadeddata', () => this.setupCanvas(), { once: true });
+      this.video.addEventListener('loadeddata', () => this.setupCanvas(restoreSnapshot), { once: true });
       return;
     }
 
@@ -463,7 +585,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
       const containerHeight = containerRect.height || container.clientHeight || window.innerHeight;
 
       if (containerWidth === 0 || containerHeight === 0) {
-        setTimeout(() => this.setupCanvas(), 200);
+        setTimeout(() => this.setupCanvas(restoreSnapshot), 200);
         return;
       }
 
@@ -517,7 +639,16 @@ export class HomePage implements AfterViewInit, OnDestroy {
         this.fogCtx.fillStyle = '#000000';
         this.fogCtx.fillRect(0, 0, this.displayWidth, this.displayHeight);
       }
-      // If hasFog=false, fogCanvas is fully transparent - video shows through
+
+      const snapshot = this.videoQueue[this.currentVideoIndex]?.fogSnapshot;
+      if (
+        restoreSnapshot &&
+        snapshot &&
+        snapshot.width === this.fogCanvas.width &&
+        snapshot.height === this.fogCanvas.height
+      ) {
+        this.fogCtx.putImageData(snapshot, 0, 0);
+      }
 
       this.fogHistory = [];
 
@@ -628,6 +759,10 @@ export class HomePage implements AfterViewInit, OnDestroy {
     if (!event.touches || event.touches.length === 0) return;
 
     const touch = event.touches[0];
+    this.swipeStartX = touch.clientX;
+    this.swipeStartY = touch.clientY;
+    this.swipeTouchDrawn = false;
+
     const rect = this.canvas?.getBoundingClientRect();
     if (!rect || !this.fogCtx || !this.fogCanvas) return;
 
@@ -656,6 +791,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
     }
 
     if (this.isDrawing && event.touches && event.touches.length === 1 && !this.isTwoFingerGesture) {
+      this.swipeTouchDrawn = true;
       event.preventDefault();
       event.stopPropagation();
 
@@ -690,6 +826,10 @@ export class HomePage implements AfterViewInit, OnDestroy {
       event.preventDefault();
       event.stopPropagation();
       this.isDrawing = false;
+      if (event.changedTouches?.[0]) {
+        const touch = event.changedTouches[0];
+        this.trySwipeNavigation(touch.clientX, touch.clientY);
+      }
     }
 
     if (remainingTouches === 0) {
