@@ -4,6 +4,7 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
+import { VideoQueuePicker } from '../plugins/video-queue-picker';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../services/translation.service';
 import { AdsService } from '../services/ads.service';
@@ -62,7 +63,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
   private suppressBannerRestore = false;
   private swipeStartX = 0;
   private swipeStartY = 0;
-  private swipeTouchDrawn = false;
+  private gestureMode: 'none' | 'pending' | 'draw' | 'swipe' = 'none';
 
   get hasVideo(): boolean {
     return this.videoQueue.length > 0;
@@ -90,6 +91,9 @@ export class HomePage implements AfterViewInit, OnDestroy {
     public billing: BillingService
   ) {}
 
+  /** Native AdMob banner sits above the WebView and steals taps. */
+  private overlayLockCount = 0;
+
   async closeMenu() {
     await this.menuController.close('main-menu');
   }
@@ -98,12 +102,26 @@ export class HomePage implements AfterViewInit, OnDestroy {
     await this.menuController.open('main-menu');
   }
 
-  /** Native AdMob banner sits above the WebView and steals taps on Premium. */
   async onMenuDidOpen() {
-    await this.ads.hideBanner();
+    await this.lockOverlay();
   }
 
   async onMenuDidClose() {
+    await this.unlockOverlay();
+  }
+
+  private async lockOverlay() {
+    this.overlayLockCount += 1;
+    this.showBannerSlot = false;
+    await this.ads.setOverlaySuppressed(true);
+  }
+
+  private async unlockOverlay() {
+    this.overlayLockCount = Math.max(0, this.overlayLockCount - 1);
+    if (this.overlayLockCount > 0) {
+      return;
+    }
+    await this.ads.setOverlaySuppressed(false);
     await this.maybeRestoreBanner();
   }
 
@@ -111,18 +129,22 @@ export class HomePage implements AfterViewInit, OnDestroy {
     this.setupBackButtonHandler();
     this.setupAppStateHandler();
     this.enableFullScreen();
+    if (this.needsOnboarding()) {
+      this.showBannerSlot = false;
+      void this.ads.setOverlaySuppressed(true);
+    }
     this.checkAndShowTutorial();
-    this.showBannerSlot = !this.billing.isAdFree;
+    this.showBannerSlot = !this.billing.isAdFree && !this.needsOnboarding();
     this.adFreeSub = this.billing.adFree$.subscribe(async (adFree) => {
-      this.showBannerSlot = !adFree && !this.hasVideo;
+      this.showBannerSlot = !adFree && !this.hasVideo && !this.ads.isOverlaySuppressed();
       if (adFree) {
         await this.ads.removeBanner();
-      } else if (!this.hasVideo && !this.suppressBannerRestore) {
+      } else if (!this.hasVideo && !this.suppressBannerRestore && !this.ads.isOverlaySuppressed()) {
         await this.ads.showBannerIfAllowed();
       }
     });
     this.bannerSub = this.ads.bannerActive$.subscribe((active) => {
-      if (!this.billing.isAdFree && !this.hasVideo) {
+      if (!this.billing.isAdFree && !this.hasVideo && !this.ads.isOverlaySuppressed()) {
         this.showBannerSlot = active || !Capacitor.isNativePlatform();
       }
     });
@@ -134,11 +156,18 @@ export class HomePage implements AfterViewInit, OnDestroy {
         this.canvas = this.canvasElement.nativeElement;
         this.ctx = this.canvas.getContext('2d');
       }
-      if (!this.hasVideo && !this.billing.isAdFree) {
+      if (!this.hasVideo && !this.billing.isAdFree && !this.ads.isOverlaySuppressed()) {
         this.showBannerSlot = true;
         await this.ads.showBannerIfAllowed();
       }
     }, 100);
+  }
+
+  private needsOnboarding(): boolean {
+    return (
+      !localStorage.getItem('fog-of-war-language-selected') ||
+      !localStorage.getItem('fog-of-war-tutorial-completed')
+    );
   }
 
   private async maybeRestoreBanner() {
@@ -147,7 +176,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.hasVideo ||
       this.billing.isAdFree ||
       this.purchaseInFlight ||
-      this.ads.isVideoModeActive()
+      this.ads.isVideoModeActive() ||
+      this.ads.isOverlaySuppressed()
     ) {
       return;
     }
@@ -157,50 +187,52 @@ export class HomePage implements AfterViewInit, OnDestroy {
 
   async checkAndShowTutorial() {
     const languageSelected = localStorage.getItem('fog-of-war-language-selected');
+    const tutorialCompleted = localStorage.getItem('fog-of-war-tutorial-completed');
+
+    if (languageSelected && tutorialCompleted) {
+      return;
+    }
+
+    if (this.needsOnboarding()) {
+      this.showBannerSlot = false;
+      await this.lockOverlay();
+    }
 
     if (!languageSelected) {
-      setTimeout(async () => {
-        const langModal = await this.modalController.create({
-          component: LanguageSelectorComponent,
-          cssClass: 'language-selector-modal',
-          backdropDismiss: false
-        });
-        await langModal.present();
-
-        langModal.onDidDismiss().then(async () => {
-          const tutorialCompleted = localStorage.getItem('fog-of-war-tutorial-completed');
-          if (!tutorialCompleted) {
-            const tutorialModal = await this.modalController.create({
-              component: TutorialComponent,
-              cssClass: 'tutorial-modal',
-              backdropDismiss: false
-            });
-            await tutorialModal.present();
-          }
-        });
-      }, 500);
-    } else {
-      const tutorialCompleted = localStorage.getItem('fog-of-war-tutorial-completed');
-      if (!tutorialCompleted) {
-        setTimeout(async () => {
-          const modal = await this.modalController.create({
-            component: TutorialComponent,
-            cssClass: 'tutorial-modal',
-            backdropDismiss: false
-          });
-          await modal.present();
-        }, 500);
-      }
+      const langModal = await this.modalController.create({
+        component: LanguageSelectorComponent,
+        cssClass: 'language-selector-modal',
+        backdropDismiss: false
+      });
+      await langModal.present();
+      await langModal.onDidDismiss();
     }
+
+    const stillNeedsTutorial = !localStorage.getItem('fog-of-war-tutorial-completed');
+    if (stillNeedsTutorial) {
+      const tutorialModal = await this.modalController.create({
+        component: TutorialComponent,
+        cssClass: 'tutorial-modal',
+        backdropDismiss: false
+      });
+      await tutorialModal.present();
+      await tutorialModal.onDidDismiss();
+    }
+
+    await this.unlockOverlay();
   }
 
   async openLanguageSelector() {
+    await this.lockOverlay();
+    await this.menuController.close('main-menu');
     const modal = await this.modalController.create({
       component: LanguageSelectorComponent,
       cssClass: 'language-selector-modal',
       backdropDismiss: true
     });
     await modal.present();
+    await modal.onDidDismiss();
+    await this.unlockOverlay();
   }
 
   enableFullScreen() {
@@ -343,11 +375,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
 
     try {
       if (Capacitor.isNativePlatform()) {
-        const result = await FilePicker.pickVideos({
-          limit: 0,
-          readData: false
-        });
-        const files = result.files ?? [];
+        const files = await this.pickNativeVideos();
         if (files.length === 0) {
           return;
         }
@@ -375,6 +403,31 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.suppressBannerRestore = false;
       await this.maybeRestoreBanner();
     }
+  }
+
+  /**
+   * Photo Picker supports real multi-select. capawesome FilePicker 5.x uses
+   * ACTION_PICK + `multiple` (not `limit`), which Samsung Gallery often ignores.
+   */
+  private async pickNativeVideos(): Promise<{ path?: string; name?: string }[]> {
+    try {
+      const result = await VideoQueuePicker.pickVideos();
+      if (result.files?.length) {
+        return result.files;
+      }
+    } catch (err: any) {
+      const message = String(err?.message || err || '');
+      if (/cancel|dismiss/i.test(message)) {
+        throw err;
+      }
+      console.warn('[HomePage] VideoQueuePicker failed, falling back', err);
+    }
+
+    const result = await FilePicker.pickVideos({
+      multiple: true,
+      readData: false
+    });
+    return result.files ?? [];
   }
 
   private pickVideoWithHtmlInput(): Promise<void> {
@@ -510,13 +563,13 @@ export class HomePage implements AfterViewInit, OnDestroy {
   }
 
   private trySwipeNavigation(endX: number, endY: number) {
-    if (this.videoQueue.length <= 1 || this.swipeTouchDrawn) {
+    if (this.videoQueue.length <= 1) {
       return;
     }
 
     const dx = endX - this.swipeStartX;
     const dy = endY - this.swipeStartY;
-    if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) {
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.2) {
       return;
     }
 
@@ -600,14 +653,15 @@ export class HomePage implements AfterViewInit, OnDestroy {
       const videoAspect = effectiveVideoWidth / effectiveVideoHeight;
       const containerAspect = containerWidth / containerHeight;
 
+      // Cover the whole screen (crop edges) instead of letterboxing.
       let displayWidth: number, displayHeight: number;
 
       if (videoAspect > containerAspect) {
-        displayWidth = containerWidth;
-        displayHeight = containerWidth / videoAspect;
-      } else {
         displayHeight = containerHeight;
         displayWidth = containerHeight * videoAspect;
+      } else {
+        displayWidth = containerWidth;
+        displayHeight = containerWidth / videoAspect;
       }
 
       this.displayWidth = Math.round(displayWidth);
@@ -708,11 +762,20 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.activeTouches = 2;
       this.isTwoFingerGesture = true;
       this.twoFingerStartTime = Date.now();
-    } else {
-      this.activeTouches = event.touches ? event.touches.length : 0;
-      if (this.activeTouches < 2) {
-        this.isTwoFingerGesture = false;
-      }
+      this.gestureMode = 'none';
+      return;
+    }
+
+    this.activeTouches = event.touches ? event.touches.length : 0;
+    if (this.activeTouches < 2) {
+      this.isTwoFingerGesture = false;
+    }
+
+    if (this.activeTouches === 1 && this.videoQueue.length > 1) {
+      const touch = event.touches[0];
+      this.swipeStartX = touch.clientX;
+      this.swipeStartY = touch.clientY;
+      this.gestureMode = 'pending';
     }
   }
 
@@ -727,13 +790,26 @@ export class HomePage implements AfterViewInit, OnDestroy {
         this.openMenu();
         this.isTwoFingerGesture = false;
         this.activeTouches = 0;
+        this.gestureMode = 'none';
         return;
       }
+    }
+
+    if (
+      remainingTouches === 0 &&
+      !this.isTwoFingerGesture &&
+      this.gestureMode !== 'draw' &&
+      event.changedTouches?.[0]
+    ) {
+      const touch = event.changedTouches[0];
+      this.trySwipeNavigation(touch.clientX, touch.clientY);
     }
 
     if (remainingTouches === 0) {
       this.activeTouches = 0;
       this.isTwoFingerGesture = false;
+      this.gestureMode = 'none';
+      this.isDrawing = false;
     }
   }
 
@@ -742,6 +818,8 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.activeTouches = 2;
       this.isTwoFingerGesture = true;
       this.twoFingerStartTime = Date.now();
+      this.gestureMode = 'none';
+      this.isDrawing = false;
       return;
     }
 
@@ -750,38 +828,27 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.activeTouches = 1;
     }
 
-    if (event.touches && event.touches.length === 1) {
-      this.isTwoFingerGesture = false;
-      event.preventDefault();
-      event.stopPropagation();
+    if (!event.touches || event.touches.length !== 1) {
+      return;
     }
 
-    if (!event.touches || event.touches.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
 
     const touch = event.touches[0];
     this.swipeStartX = touch.clientX;
     this.swipeStartY = touch.clientY;
-    this.swipeTouchDrawn = false;
-
-    const rect = this.canvas?.getBoundingClientRect();
-    if (!rect || !this.fogCtx || !this.fogCanvas) return;
-
-    if (!this.isDrawing) {
-      this.saveHistory();
-    }
-
-    this.isDrawing = true;
+    this.gestureMode = 'pending';
+    this.isDrawing = false;
     this.activeTouches = 1;
-
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    this.removeFog(x, y, rect);
   }
 
   onCanvasTouchMove(event: TouchEvent) {
     if (event.touches && event.touches.length === 2) {
       this.activeTouches = 2;
       this.isTwoFingerGesture = true;
+      this.gestureMode = 'none';
+      this.isDrawing = false;
       return;
     }
 
@@ -790,18 +857,44 @@ export class HomePage implements AfterViewInit, OnDestroy {
       this.activeTouches = 1;
     }
 
-    if (this.isDrawing && event.touches && event.touches.length === 1 && !this.isTwoFingerGesture) {
-      this.swipeTouchDrawn = true;
-      event.preventDefault();
-      event.stopPropagation();
+    if (!event.touches || event.touches.length !== 1 || this.isTwoFingerGesture) {
+      return;
+    }
 
-      const touch = event.touches[0];
+    event.preventDefault();
+    event.stopPropagation();
+
+    const touch = event.touches[0];
+    const dx = touch.clientX - this.swipeStartX;
+    const dy = touch.clientY - this.swipeStartY;
+
+    if (this.gestureMode === 'pending') {
+      const distance = Math.hypot(dx, dy);
+      if (distance < 14) {
+        return;
+      }
+
+      if (
+        this.videoQueue.length > 1 &&
+        Math.abs(dx) >= Math.abs(dy) * 1.15 &&
+        Math.abs(dx) >= 24
+      ) {
+        this.gestureMode = 'swipe';
+        return;
+      }
+
+      this.gestureMode = 'draw';
+      this.saveHistory();
+      this.isDrawing = true;
+    }
+
+    if (this.gestureMode === 'draw') {
       const rect = this.canvas?.getBoundingClientRect();
-      if (!rect || !this.fogCtx || !this.fogCanvas) return;
-
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      this.removeFog(x, y, rect);
+      if (!rect || !this.fogCtx || !this.fogCanvas) {
+        return;
+      }
+      this.isDrawing = true;
+      this.removeFog(touch.clientX - rect.left, touch.clientY - rect.top, rect);
     }
   }
 
@@ -818,6 +911,7 @@ export class HomePage implements AfterViewInit, OnDestroy {
         this.isTwoFingerGesture = false;
         this.activeTouches = 0;
         this.isDrawing = false;
+        this.gestureMode = 'none';
         return;
       }
     }
@@ -825,16 +919,21 @@ export class HomePage implements AfterViewInit, OnDestroy {
     if (!this.isTwoFingerGesture && this.activeTouches === 1) {
       event.preventDefault();
       event.stopPropagation();
-      this.isDrawing = false;
-      if (event.changedTouches?.[0]) {
-        const touch = event.changedTouches[0];
-        this.trySwipeNavigation(touch.clientX, touch.clientY);
+      if (this.gestureMode === 'swipe' || this.gestureMode === 'pending') {
+        if (event.changedTouches?.[0]) {
+          const touch = event.changedTouches[0];
+          this.trySwipeNavigation(touch.clientX, touch.clientY);
+        }
       }
+      this.isDrawing = false;
+      this.gestureMode = 'none';
     }
 
     if (remainingTouches === 0) {
       this.activeTouches = 0;
       this.isTwoFingerGesture = false;
+      this.gestureMode = 'none';
+      this.isDrawing = false;
     }
   }
 
